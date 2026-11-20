@@ -12,7 +12,7 @@ export default {
         signal: COLORS.signal,
         leak: COLORS.leak,
         lead: COLORS.neutralLead,
-        nurture: COLORS.nurture,
+        researching: COLORS.researching,
       },
       fontFamily: {
         sans: FONTS.sans.split(', '),

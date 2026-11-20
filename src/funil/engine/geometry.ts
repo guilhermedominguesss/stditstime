@@ -7,10 +7,10 @@ import type { LeakId, RouteId } from '../config'
  *  - eixo do funil um pouco à direita (x = 210): a coluna da esquerda abriga os labels
  *    das saídas de vazamento e o DEPÓSITO de perdidos (canto inferior esquerdo);
  *  - todas as saídas ficam na parede ESQUERDA (o vazamento cai direto no depósito);
- *  - o lado direito fica livre para a raia "Ainda não está pronto" (depois do STD).
+ *  - o lado direito fica limpo: depois do STD, todo mundo desce até o WhatsApp.
  *
  * O funil é descrito por "nós" em alturas fixas (KNOT_Y). Em cada nó, a rota define a
- * meia-largura (hw) e o desvio do eixo (axis). Entre os nós, Catmull-Rom. Como todas as
+ * meia-largura (hw) e o deslocamento do eixo (axis). Entre os nós, Catmull-Rom. Como todas as
  * rotas têm os mesmos nós, o morph entre rotas é um lerp de arrays. Tudo é amostrado
  * numa LUT por y: as partículas só leem a tabela.
  */
@@ -77,7 +77,7 @@ export const SHAPES: Record<RouteId | 'default', Shape> = {
     exitY: { preco: 122, curioso: 158, contexto: 194 },
     gate: 1, gateY: 192, turb: 0, turbY: 200, membraneY: 240,
   },
-  // fila lateral confusa: eixo desvia e as partículas se misturam
+  // fila lateral confusa: o eixo se desloca e as partículas se misturam
   direct: {
     hw: [102, 90, 78, 60, 34, 14, TUBE_HW],
     axis: [0, 10, 24, 26, 12, 3, 0],

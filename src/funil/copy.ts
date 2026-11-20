@@ -21,7 +21,7 @@ export const CAPTIONS = {
   std_intro: 'Agora veja o mesmo anúncio com um STD.',
   std_filter: 'O filtro conhece cada pessoa antes do seu WhatsApp.',
   std_hero1: 'Essa sabe o que quer. Passa e chega pronta pra comprar.',
-  std_hero2: 'Essa só estava curiosa. Recebe conteúdo, não seu tempo.',
+  std_hero2: 'Essa ainda está pesquisando. Chega também, já identificada.',
   std_running: 'Mesmo anúncio. Agora chegam mais pessoas prontas.',
   prova: 'Isso aconteceu num funil de verdade.',
   saida: 'Você acabou de passar por um STD.',
@@ -44,7 +44,6 @@ export const ENGINE_LABELS = {
   } satisfies Record<LeakId, [string, string]>,
   filtro: 'FILTRO STD',
   filtroSub: ['conhece a pessoa antes', 'do seu WhatsApp'],
-  lane: ['Ainda não está', 'pronto → recebe', 'conteúdo'],
   chegaram: ['CHEGARAM'],
   prontas: ['PRONTAS PRA', 'COMPRAR'],
   perdidos: 'PERDIDOS',
@@ -52,7 +51,7 @@ export const ENGINE_LABELS = {
   heroWhen: 'Quando: este mês',
   heroProfile: 'Perfil: ✓',
   heroWant: (procedimento: string) => `Quer: ${procedimento}`,
-  heroCurious: 'Só curiosidade',
+  heroResearching: 'Ainda pesquisando',
 } as const
 
 /* ------------------------------------------------------------------ */
@@ -70,3 +69,66 @@ export const SEGMENTS: Record<SegmentId, { label: string; procedimento: string }
   alimentacao: { label: 'ALIMENTAÇÃO', procedimento: 'Encomenda' },
   outro: { label: 'SEU NEGÓCIO', procedimento: 'Agendar horário' },
 }
+
+/* ------------------------------------------------------------------ */
+/* Saída de não qualificado (cena 10B) — checklist                    */
+/* ------------------------------------------------------------------ */
+
+/** "Os 7 vazamentos mais comuns" — itens que o próprio dono marca. */
+export const CHECKLIST_VAZAMENTOS = [
+  'O anúncio cai direto no WhatsApp, sem nenhuma etapa antes.',
+  'O lead chega sem dizer o que quer.',
+  'A primeira pergunta que você recebe é o preço.',
+  'Não existe filtro entre o curioso e o decidido.',
+  'Você não sabe em que etapa o lead desiste.',
+  'Você só descobre quem é curioso depois de mandar o preço.',
+  'Seu anúncio é otimizado pra mensagem, não pra cliente qualificado.',
+] as const
+
+/* ------------------------------------------------------------------ */
+/* Caixa de entrada viva (/lab3)                                       */
+/* ------------------------------------------------------------------ */
+
+export const INBOX = {
+  nicheTitle: 'Qual é o seu negócio?',
+  nicheSub: 'Um toque. Vamos simular a sua caixa de entrada.',
+  segmentChip: {
+    clinica: 'Clínica / saúde',
+    estetica: 'Estética / beleza',
+    odonto: 'Odontologia',
+    educacao: 'Educação / cursos',
+    servicos: 'Serviços',
+    varejo: 'Comércio / varejo',
+    alimentacao: 'Alimentação',
+    outro: 'Outro',
+  } satisfies Record<SegmentId, string>,
+  title: 'Mensagens',
+  replyOne: 'Responda uma.',
+  reply: (price: string) => `O valor é R$ ${price}!`,
+  send: 'Enviar',
+  seen: 'Visualizada 09:43',
+  typing: 'digitando…',
+  ghostSeal: 'sumiu depois do preço',
+  ghostCounter: (n: number, total: number) => [`${n} DE ${total}`, 'SUMIRAM DEPOIS DO PREÇO'] as const,
+  question: 'Isso te parece familiar?',
+  cta: 'Ver o mesmo anúncio com filtro',
+  ctaSub: 'STD: uma etapa antes do WhatsApp que conhece a pessoa',
+  readyTag: 'pronta pra agendar',
+  researchingTag: 'ainda pesquisando',
+  fieldQuer: 'Quer',
+  fieldQuando: 'Quando',
+  phrase: 'Mesmo anúncio. Outra conversa.',
+  scoreReady: 'PRONTAS PRA AGENDAR',
+  scoreIdentified: 'IDENTIFICADAS ANTES DA 1ª RESPOSTA',
+  scoreReadySub: (pct: number) => `${pct}% de respostas qualificadas no caso real`,
+  footer: 'Quem ainda não está pronto também chega, mas você já sabe disso antes de responder.',
+  openHint: 'Toque num card para ver a mensagem que chega.',
+  triageHeader: 'Resumo da triagem',
+  triageIntro: 'Oi! Vim pelo anúncio e fiz a triagem.',
+  triageName: (first: string) => `Meu nome é ${first}.`,
+  back: 'Voltar',
+  proofCta: 'Isso é real?',
+  proofLabel: 'CASO REAL · ÚLTIMOS 30 DIAS',
+  proofPlaceholder: 'A cena da prova entra aqui (Fase 6).',
+  proofBack: 'Voltar à caixa de entrada',
+} as const

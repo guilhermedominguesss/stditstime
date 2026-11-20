@@ -16,8 +16,22 @@ export const COLORS = {
   signal: '#C6FF3D',
   leak: '#FF5A36',
   neutralLead: '#C9CDD4',
-  nurture: '#5B6370',
+  /** lead identificado pelo STD que ainda está pesquisando (chega no WhatsApp, em cinza) */
+  researching: '#5B6370',
 } as const
+
+/**
+ * Avatares: 6 tons suaves (fundo pastel escuro, iniciais no claro do mesmo tom).
+ * Nenhum perto do verde signal, que é reservado ao STD.
+ */
+export const AVATAR_TONES = [
+  { bg: '#3B2A31', fg: '#F2C4D0' }, // rosa
+  { bg: '#233140', fg: '#BCD7F2' }, // azul
+  { bg: '#3A3324', fg: '#EBD9AE' }, // areia
+  { bg: '#30293D', fg: '#D5C6F0' }, // lilás
+  { bg: '#213638', fg: '#B5E2E0' }, // azul-petróleo
+  { bg: '#3C2C24', fg: '#F0C9AE' }, // terracota
+] as const
 
 export const FONTS = {
   sans: '"Inter Tight", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',

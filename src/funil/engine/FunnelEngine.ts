@@ -1,5 +1,5 @@
 import {
-  LEAK_SPLIT_VISUAL, MAX_VISIBLE, ROUTE_FLOW_MULT, STD_LEAK_EFFECT, VISUAL_DEFAULT_A10,
+  LEAK_SPLIT_VISUAL, MAX_VISIBLE, ROUTE_FLOW_MULT, VISUAL_DEFAULT_A10,
   type LeakId, type RouteId, type SegmentId,
 } from '../config'
 import { ENGINE_LABELS as T, SEGMENTS, type CaptionKey } from '../copy'
@@ -37,7 +37,7 @@ export interface EngineEvents extends Record<string, unknown> {
   caption: { key: CaptionKey | null }
   /** a pessoa do cold open chegou ao WhatsApp */
   'single:done': undefined
-  /** o herói qualificado do clímax virou mensagem no WhatsApp */
+  /** a pessoa qualificada do clímax virou mensagem no WhatsApp */
   'hero:arrive': { x: number; y: number; text: string }
   degrade: { fps: number }
 }
@@ -98,19 +98,20 @@ const C_DONE = C_RELEASE + 800
 const COLD_MS = 4400
 
 // estados de partícula
-const DEAD = 0, FUNNEL = 1, LEAK = 2, TO_DEP = 3, NURT = 4
+const DEAD = 0, FUNNEL = 1, LEAK = 2, TO_DEP = 3
 // destinos (fate)
-const F_Q = 0, F_PRECO = 1, F_CUR = 2, F_CTX = 3, F_NURT = 4
+/** F_ID: identificada pelo STD, ainda pesquisando: chega no WhatsApp também (cinza) */
+const F_Q = 0, F_PRECO = 1, F_CUR = 2, F_CTX = 3, F_ID = 4
 const FATE_EXIT: (LeakId | null)[] = [null, 'preco', 'curioso', 'contexto', null]
 /** lado para onde cada destino puxa a partícula (0 = qualquer) */
-const FATE_SIDE = [0, EXIT_SIDE.preco, EXIT_SIDE.curioso, EXIT_SIDE.contexto, 1]
+const FATE_SIDE = [0, EXIT_SIDE.preco, EXIT_SIDE.curioso, EXIT_SIDE.contexto, 0]
 
 // baldes de cor (desenho em lote)
-const C_LEAD = 0, C_LEAK = 1, C_SIGNAL = 2, C_NURT = 3, C_FLASH = 4
-const BUCKET_COLORS = [COLORS.neutralLead, COLORS.leak, COLORS.signal, COLORS.nurture, COLORS.ink]
+const C_LEAD = 0, C_LEAK = 1, C_SIGNAL = 2, C_ID = 3, C_FLASH = 4
+const BUCKET_COLORS = [COLORS.neutralLead, COLORS.leak, COLORS.signal, COLORS.researching, COLORS.ink]
 
-type VisKey = LabelKey | 'membrane' | 'lane'
-const VIS_KEYS: VisKey[] = ['segment', 'exits', 'deposit', 'money', 'score', 'membrane', 'lane']
+type VisKey = LabelKey | 'membrane'
+const VIS_KEYS: VisKey[] = ['segment', 'exits', 'deposit', 'money', 'score', 'membrane']
 
 /** mistura de cor hex por t (só fora do loop de partículas) */
 function mix(a: string, b: string, t: number) {
@@ -126,7 +127,7 @@ const seg = (el: number, a: number, b: number) => clamp01((el - a) / (b - a))
 
 /** Pessoa roteirizada (cold open e clímax): anda em tempo real, independe do slow-motion. */
 interface Hero {
-  kind: 'cold' | 'qualified' | 'curious'
+  kind: 'cold' | 'qualified' | 'researching'
   active: boolean
   t0: number
   x: number
@@ -135,9 +136,6 @@ interface Hero {
   bucket: number
   crossed: boolean
   flash: number
-  sx: number
-  sy: number
-  laneStarted: boolean
   tags: string[]
   tagAt: number[]
   tagOut: number
@@ -236,7 +234,7 @@ export class FunnelEngine {
   private stdStart = -1
   private stdApplied = false
   private lastPhase = ''
-  private v = { dark: 0, sweepY: -1, memP: 0, precoScale: 1, ctxOpen: 1, seal: 0, curOpen: 1, laneP: 0, wallBright: 0 }
+  private v = { dark: 0, sweepY: -1, memP: 0, precoOpen: 1, ctxOpen: 1, seal: 0, curOpen: 1, wallBright: 0 }
 
   // efeitos
   private exitAct: Record<LeakId, number> = { preco: 0, curioso: 0, contexto: 0 }
@@ -324,7 +322,6 @@ export class FunnelEngine {
       for (const k of ['segment', 'exits', 'deposit', 'money', 'score'] as LabelKey[]) this.setVis(k, def.labels.includes(k))
       const stdScene = name === 'std_on' || name === 'saida'
       this.setVis('membrane', this.stdApplied && stdScene)
-      this.setVis('lane', this.stdApplied && stdScene)
       this.events.emit('caption', { key: name === 'std_on' && this.stdApplied ? 'std_running' : def.caption })
     }
     if (name === 'cold_single') this.startHero(this.heroes[0], 'cold', now)
@@ -365,7 +362,7 @@ export class FunnelEngine {
       this.follow = null
       for (const h of this.heroes) if (h.kind !== 'cold') h.active = false
       this.timeScale.set(1, 0, 0)
-      Object.assign(this.v, { dark: 0, sweepY: -1, memP: 0, precoScale: 1, ctxOpen: 1, seal: 0, curOpen: 1, laneP: 0, wallBright: 0 })
+      Object.assign(this.v, { dark: 0, sweepY: -1, memP: 0, precoOpen: 1, ctxOpen: 1, seal: 0, curOpen: 1, wallBright: 0 })
       for (let i = 0; i < POOL; i++) { this.crossed[i] = 0; this.swept[i] = 0 }
       this.recomputeProbs()
       this.reassignFates()
@@ -431,7 +428,7 @@ export class FunnelEngine {
   /* --------------------------- internos --------------------------- */
 
   private newHero(): Hero {
-    return { kind: 'cold', active: false, t0: 0, x: 0, y: 0, u: 0, bucket: C_LEAD, crossed: false, flash: 0, sx: 0, sy: 0, laneStarted: false, tags: [], tagAt: [], tagOut: -1 }
+    return { kind: 'cold', active: false, t0: 0, x: 0, y: 0, u: 0, bucket: C_LEAD, crossed: false, flash: 0, tags: [], tagAt: [], tagOut: -1 }
   }
 
   private startHero(h: Hero, kind: Hero['kind'], t0: number) {
@@ -440,7 +437,6 @@ export class FunnelEngine {
     h.t0 = t0
     h.crossed = false
     h.flash = 0
-    h.laneStarted = false
     h.bucket = C_LEAD
     h.tagOut = -1
     if (kind === 'cold') {
@@ -454,8 +450,8 @@ export class FunnelEngine {
       h.tagAt = [1300, 1700, 2100]
     } else {
       h.u = 0.3
-      h.tags = [T.heroCurious]
-      h.tagAt = [1000]
+      h.tags = [T.heroResearching]
+      h.tagAt = [1250]
     }
     h.y = this.shape.membraneY - 64
     h.x = this.lut.cxAt(h.y) + h.u * this.lut.hwAt(h.y)
@@ -517,12 +513,10 @@ export class FunnelEngine {
         p[F_CUR] = (1 - q) * split.curioso
         p[F_CTX] = (1 - q) * split.contexto
       } else {
+        // o STD não barra ninguém: todos chegam; quem ainda pesquisa chega identificado
         const q = convProjected(a10)
-        const rest = 1 - q
         p[F_Q] = q
-        p[F_PRECO] = rest * split.preco * STD_LEAK_EFFECT.precoScale
-        p[F_CTX] = rest * split.contexto * STD_LEAK_EFFECT.contextoScale
-        p[F_NURT] = Math.max(0, rest - p[F_PRECO] - p[F_CTX])
+        p[F_ID] = 1 - q
       }
     }
     this.counts.fill(0)
@@ -589,7 +583,7 @@ export class FunnelEngine {
     this.st[i] = FUNNEL
     this.fate[i] = f
     const side = FATE_SIDE[f]
-    this.pu[i] = side === 0 ? (Math.random() * 2 - 1) * 0.75 : side * (f === F_NURT ? 0.3 + Math.random() * 0.5 : 0.5 + Math.random() * 0.35)
+    this.pu[i] = side === 0 ? (Math.random() * 2 - 1) * 0.75 : side * (0.5 + Math.random() * 0.35)
     this.vu[i] = 0
     this.py[i] = MOUTH_Y + 4 + Math.random() * 22
     this.vy[i] = BASE_V * (0.8 + Math.random() * 0.4)
@@ -648,11 +642,11 @@ export class FunnelEngine {
       ? (MOUTH_Y - 30) + (this.shape.membraneY - MOUTH_Y + 30) * easeInOutCubic(seg(el, C_SWEEP, C_MEMBRANE))
       : -1
     v.memP = easeOutExpo(seg(el, C_MEMBRANE, C_EXITS))
-    v.precoScale = 1 - 0.5 * easeOutExpo(seg(el, C_EXITS, C_HERO1))
+    // as saídas se fecham: chegando com contexto, ninguém some antes de virar conversa
+    v.precoOpen = 1 - easeOutExpo(seg(el, C_EXITS + 100, C_HERO1))
     v.ctxOpen = 1 - easeOutExpo(seg(el, C_EXITS, C_EXITS + 250))
     v.seal = seg(el, C_EXITS + 80, C_HERO1)
-    v.curOpen = 1 - easeOutExpo(seg(el, C_EXITS, C_EXITS + 250))
-    v.laneP = easeInOutCubic(seg(el, C_EXITS + 50, C_HERO1))
+    v.curOpen = 1 - easeOutExpo(seg(el, C_EXITS + 50, C_EXITS + 300))
     v.wallBright = easeInOutCubic(seg(el, C_RELEASE, C_RELEASE + 600))
 
     if (el < C_DARK) this.phaseEmit('slow')
@@ -666,8 +660,7 @@ export class FunnelEngine {
       this.phaseEmit('membrane')
     } else if (el < C_HERO1) {
       if (this.lastPhase !== 'exits') {
-        this.setVis('exits', true) // mostra a transformação das saídas
-        this.setVis('lane', true)
+        this.setVis('exits', true) // mostra as saídas se fechando
       }
       this.phaseEmit('exits')
     } else if (el < C_HERO2) {
@@ -682,9 +675,8 @@ export class FunnelEngine {
     } else if (el < C_RELEASE) {
       if (this.lastPhase !== 'hero2') {
         this.heroes[0].active = false
-        this.startHero(this.heroes[1], 'curious', now - (el - C_HERO2))
+        this.startHero(this.heroes[1], 'researching', now - (el - C_HERO2))
         this.follow = this.heroes[1]
-        this.setVis('lane', false) // a etiqueta "Só curiosidade" é a lição; o label volta no final
         this.events.emit('caption', { key: 'std_hero2' })
       }
       this.phaseEmit('hero2')
@@ -699,7 +691,6 @@ export class FunnelEngine {
       this.setTimeScale(1, 700)
       this.setVis('exits', false)
       this.setVis('membrane', true)
-      this.setVis('lane', true)
       this.setVis('deposit', true)
       this.setVis('score', true)
       this.prontasOn.set(1, 900, now)
@@ -752,32 +743,24 @@ export class FunnelEngine {
       }
       return
     }
-    // curiosa: chega no filtro, é identificada e desvia para a raia de nutrição
-    if (e < 1000) {
-      h.y = mY - 64 + 58 * easeOutCubic(e / 1000)
-      h.u = 0.3 + 0.35 * (e / 1000)
-      h.x = lut.cxAt(h.y) + h.u * lut.hwAt(h.y)
-    } else if (e < 1300) {
-      if (e > 1150) h.bucket = C_NURT
-    } else {
-      if (!h.laneStarted) { h.laneStarted = true; h.sx = h.x; h.sy = h.y }
-      const k = easeInOutCubic(clamp01((e - 1300) / 1200))
-      this.lanePoint(h.sx, h.sy, k, this.tmp)
-      h.x = this.tmp.x
-      h.y = this.tmp.y
+    // ainda pesquisando: passa pelo filtro, é identificada e chega no WhatsApp também
+    let y: number
+    if (e < 1000) y = mY - 64 + 58 * easeOutCubic(e / 1000)
+    else if (e < 1600) y = mY - 6 + 16 * clamp01((e - 1000) / 400)
+    else y = mY + 10 + (NODE_Y - mY - 10) * easeInCubic(clamp01((e - 1600) / 900))
+    if (!h.crossed && y >= mY) {
+      h.crossed = true
+      h.flash = 1
+      h.bucket = C_ID
+      this.ripple(lut.cxAt(y) + h.u * lut.hwAt(y))
     }
-    if (e >= 2000 && h.tagOut < 0) h.tagOut = e
-    if (e >= HERO2_MS) h.active = false
-  }
-
-  private lanePoint(sx: number, sy: number, k: number, out: { x: number; y: number }) {
-    const mY = this.shape.membraneY
-    const c1x = this.lut.wallX(mY, 1) + 46, c1y = mY + 6
-    const ex = WORLD_W + 50, ey = mY + 150
-    const a = 1 - k
-    out.x = a * a * sx + 2 * a * k * c1x + k * k * ex
-    out.y = a * a * sy + 2 * a * k * c1y + k * k * ey
-    return out
+    h.y = y
+    h.x = lut.cxAt(y) + h.u * lut.hwAt(y)
+    if (e >= 1900 && h.tagOut < 0) h.tagOut = e
+    if (e >= HERO2_MS) {
+      h.active = false
+      this.pulseAge[this.pulseI++ % 6] = 0
+    }
   }
 
   /* ---------------------------- física ---------------------------- */
@@ -850,7 +833,6 @@ export class FunnelEngine {
         const exit = FATE_EXIT[f]
         let steerY = -1, side = 0
         if (exit) { steerY = shape.exitY[exit]; side = EXIT_SIDE[exit] }
-        else if (f === F_NURT) { steerY = mY; side = 1 }
         let limit = 0.86
         if (side !== 0 && ny > steerY - LEAK_STEER_WINDOW && ny < steerY + 4) {
           let du = (side - u) * Math.min(1, dt * 3.5)
@@ -872,9 +854,8 @@ export class FunnelEngine {
         }
 
         if (exit && ny >= steerY - 3) {
-          const closed = stdOn && (exit === 'contexto' || exit === 'curioso')
-          if (closed || this.exitOpen(exit) < 0.05) {
-            this.fate[i] = stdOn ? (ny < mY ? F_NURT : F_Q) : F_Q
+          if (stdOn || this.exitOpen(exit) < 0.05) {
+            this.fate[i] = stdOn ? F_ID : F_Q
           } else {
             this.toLeak(i, exit)
             continue
@@ -884,13 +865,6 @@ export class FunnelEngine {
         if (y < mY && ny >= mY) {
           this.crossed[i] = 1
           if (this.v.memP > 0.5) this.ripple(lut.cxAt(ny) + u * lut.hwAt(ny))
-          if (this.fate[i] === F_NURT && this.v.laneP > 0.5) {
-            this.st[i] = NURT
-            this.sx[i] = lut.cxAt(ny) + u * lut.hwAt(ny)
-            this.sy[i] = ny
-            this.pu[i] = 0
-            continue
-          }
         }
 
         if (ny >= NODE_Y) {
@@ -920,13 +894,6 @@ export class FunnelEngine {
         const cx = this.sx[i] - 30, cy = Math.max(this.sy[i], ty - 60)
         this.px[i] = a * a * this.sx[i] + 2 * a * e * cx + e * e * tx
         this.py[i] = a * a * this.sy[i] + 2 * a * e * cy + e * e * ty
-      } else if (s === NURT) {
-        const k = this.pu[i] + dt * 0.5
-        if (k >= 1) { this.kill(i); continue }
-        this.pu[i] = k
-        this.lanePoint(this.sx[i], this.sy[i], k, this.tmp)
-        this.px[i] = this.tmp.x + Math.sin(t * 3 + ph) * 2
-        this.py[i] = this.tmp.y
       }
     }
   }
@@ -970,7 +937,7 @@ export class FunnelEngine {
   }
 
   private exitOpen(k: LeakId) {
-    const base = k === 'preco' ? this.v.precoScale : k === 'contexto' ? this.v.ctxOpen : this.v.curOpen
+    const base = k === 'preco' ? this.v.precoOpen : k === 'contexto' ? this.v.ctxOpen : this.v.curOpen
     return this.exitsP.value * base
   }
 
@@ -1051,7 +1018,6 @@ export class FunnelEngine {
     if (this.v.dark > 0.005) this.drawOutsideDark(this.v.dark)
     if (wallsP > 0.001) this.drawWalls(wallsP, px)
     if (this.shape.gate > 0.02 && wallsP > 0.5) this.drawGate(px)
-    if (this.v.laneP > 0.01) this.drawLane(px)
     if (this.v.memP > 0.01) this.drawMembrane(px)
     if (this.v.sweepY >= 0) this.drawSweep(px)
     this.drawMoney(px)
@@ -1141,7 +1107,6 @@ export class FunnelEngine {
         if (Math.abs(y - this.shape.exitY[k]) < g) return true
       }
     }
-    if (side === 1 && this.v.laneP > 0.01 && Math.abs(y - this.shape.membraneY) < 11 * this.v.laneP) return true
     return false
   }
 
@@ -1202,23 +1167,6 @@ export class FunnelEngine {
     ctx.restore()
   }
 
-  private drawLane(px: number) {
-    const ctx = this.ctx!
-    const mY = this.shape.membraneY
-    const x0 = this.lut.wallX(mY, 1)
-    ctx.strokeStyle = COLORS.nurture
-    ctx.lineWidth = 2 * px
-    ctx.setLineDash([6 * px, 6 * px])
-    ctx.beginPath()
-    for (let i = 0; i <= 24; i++) {
-      this.lanePoint(x0, mY, (i / 24) * this.v.laneP, this.tmp)
-      if (i === 0) ctx.moveTo(this.tmp.x, this.tmp.y)
-      else ctx.lineTo(this.tmp.x, this.tmp.y)
-    }
-    ctx.stroke()
-    ctx.setLineDash([])
-  }
-
   private drawMembrane(px: number) {
     const ctx = this.ctx!
     const y = this.shape.membraneY
@@ -1270,8 +1218,8 @@ export class FunnelEngine {
       if (s === DEAD) continue
       if (this.flash[i] > 0.35) bk[i] = C_FLASH
       else if (s === LEAK || s === TO_DEP) bk[i] = C_LEAK
-      else if (s === NURT) bk[i] = C_NURT
       else if (stdOn && this.crossed[i] && this.fate[i] === F_Q) bk[i] = C_SIGNAL
+      else if (stdOn && this.crossed[i] && this.fate[i] === F_ID) bk[i] = C_ID
       else bk[i] = C_LEAD
     }
     ctx.lineCap = 'round'
@@ -1348,7 +1296,7 @@ export class FunnelEngine {
       const x = flip ? h.x - (HERO_R + 12) * px : right
       const lh = 19 * px
       const y0 = h.y - ((h.tags.length - 1) * lh) / 2
-      const color = h.kind === 'qualified' ? COLORS.signal : COLORS.ink
+      const color = h.kind === 'qualified' ? COLORS.signal : h.kind === 'researching' ? COLORS.inkMuted : COLORS.ink
       for (let i = 0; i < h.tags.length; i++) {
         const a = easeOutExpo(clamp01((e - h.tagAt[i]) / 350)) * out
         if (a <= 0) continue
@@ -1488,7 +1436,7 @@ export class FunnelEngine {
   private drawLabels(px: number) {
     const lut = this.lut
     const vis = this.vis
-    const L = this.visibleLeft(), Rv = this.visibleRight()
+    const L = this.visibleLeft()
 
     // saídas de vazamento (parede esquerda), em linguagem leiga
     const ex = vis.exits.value * this.exitsP.value
@@ -1497,9 +1445,9 @@ export class FunnelEngine {
       for (const k of LEAK_IDS) {
         const y = this.shape.exitY[k]
         const act = Math.min(1, this.exitAct[k])
-        const transformed = k === 'preco' ? 0 : 1 - (k === 'contexto' ? this.v.ctxOpen : this.v.curOpen)
+        const transformed = 1 - (k === 'preco' ? this.v.precoOpen : k === 'contexto' ? this.v.ctxOpen : this.v.curOpen)
         const color = transformed > 0.5 ? COLORS.inkMuted : COLORS.leak
-        const alpha = ex * (0.8 + 0.2 * act) * (k === 'preco' ? 0.6 + 0.4 * this.v.precoScale : 1)
+        const alpha = ex * (0.8 + 0.2 * act)
         const lines = T.exits[k]
         const x = Math.max(lut.wallX(y, -1) - 12 * px, L + this.widest(lines) + 6 * px)
         this.textBlock(lines, x, y - 8 * px, 'right', color, alpha, px, 16)
@@ -1547,14 +1495,5 @@ export class FunnelEngine {
       this.textBlock(T.filtroSub, x, y + 14 * px, 'right', COLORS.ink, mb, px, 15)
     }
 
-    // raia de nutrição
-    const ln = vis.lane.value * this.v.laneP
-    if (ln > 0.01) {
-      const y = this.shape.membraneY
-      this.font(12, px, 'sans', 500)
-      const w = this.widest(T.lane)
-      const x = Math.min(lut.wallX(y - 30, 1) + 12 * px, Rv - w - 6 * px)
-      this.textBlock(T.lane, x, y - 50 * px, 'left', COLORS.inkMuted, ln, px, 15)
-    }
   }
 }
