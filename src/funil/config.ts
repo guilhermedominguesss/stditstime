@@ -32,6 +32,11 @@ export const REF_CONV = CASE_REF.appointments / CASE_REF.leads
 export const GAP_CAPTURE = 0.5
 /** Das conversas sérias A MAIS, metade vira venda. (No caso real foi 49/75 ≈ 0,65.) */
 export const CLOSE_ASSUMED = 0.5
+/**
+ * Placar "PRONTAS PRA COMPRAR" = conversas sérias × esta taxa. Usa a MESMA premissa da
+ * "receita a mais" (CLOSE_ASSUMED), para o placar e a projeção nunca se contradizerem.
+ */
+export const READY_TO_BUY_SHARE = CLOSE_ASSUMED
 /** Do que vaza, 15% seria recuperável se o lead chegasse qualificado. */
 export const RECOVERABLE = 0.15
 
@@ -104,11 +109,14 @@ export const VISUAL_DEFAULT_A10 = 4
 export const STD_LEAK_EFFECT = { precoScale: 0.5, contextoScale: 0 } as const
 
 /**
- * Densidade de partículas: spawnRate = lerp(4, 60, log10(L/10)/2) partículas/s.
+ * Densidade de partículas: spawnRate = lerp(SPAWN_MIN, SPAWN_MAX, log10(L/10)/2) partículas/s.
  * Mapeamento visual, não literal (30 leads = garoa, 1.000 = cachoeira).
+ * Teste do leigo: no máximo MAX_VISIBLE partículas na tela, maiores e mais lentas, para
+ * cada ponto ser lido como "uma pessoa". (O brief original pedia 4–60/s; ficou ilegível.)
  */
-export const SPAWN_MIN = 4
-export const SPAWN_MAX = 60
+export const SPAWN_MIN = 2
+export const SPAWN_MAX = 22
+export const MAX_VISIBLE = 90
 /** Multiplicador visual de fluxo por rota ("ainda não anuncio" = pouco fluxo). */
 export const ROUTE_FLOW_MULT: Record<RouteId | 'default', number> = {
   default: 1,
