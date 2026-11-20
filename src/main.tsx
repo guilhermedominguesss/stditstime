@@ -3,15 +3,19 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 
 const Lab = lazy(() => import('./lab/Lab'))
+const Lab2 = lazy(() => import('./lab2/Lab2'))
 
-const isLab = window.location.pathname.replace(/\/+$/, '') === '/lab'
+const path = window.location.pathname.replace(/\/+$/, '')
 
 function Placeholder() {
   return (
     <main className="h-dvh-safe flex flex-col items-center justify-center gap-6 px-4 text-center">
-      <p className="font-mono text-xs uppercase tracking-telemetry text-ink-muted">Funil Vivo · fase 1</p>
+      <p className="font-mono text-xs uppercase tracking-telemetry text-ink-muted">Funil Vivo · protótipos</p>
       <a href="/lab" className="font-mono text-sm uppercase tracking-telemetry text-ink underline underline-offset-4">
-        Abrir o /lab do motor
+        /lab · motor de partículas
+      </a>
+      <a href="/lab2" className="font-mono text-sm uppercase tracking-telemetry text-ink underline underline-offset-4">
+        /lab2 · caixa de entrada viva
       </a>
     </main>
   )
@@ -19,10 +23,8 @@ function Placeholder() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isLab ? (
-      <Suspense fallback={null}>
-        <Lab />
-      </Suspense>
+    {path === '/lab' || path === '/lab2' ? (
+      <Suspense fallback={null}>{path === '/lab' ? <Lab /> : <Lab2 />}</Suspense>
     ) : (
       <Placeholder />
     )}
