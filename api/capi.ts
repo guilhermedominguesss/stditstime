@@ -18,6 +18,7 @@ interface Res {
   json: (body: unknown) => void
 }
 
+export const CAPI_VERSION = 'capi-2'
 const REF_RE = /^FV-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}$/
 const str = (v: unknown, max = 500) => (typeof v === 'string' && v ? v.slice(0, max) : undefined)
 const header = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -69,7 +70,8 @@ export async function sendLead(body: Record<string, unknown>, ctx: { ip?: string
 }
 
 export default async function handler(req: Req, res: Res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed' })
+  // 'versao' permite conferir qual função está no ar sem disparar nada
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed', versao: CAPI_VERSION })
   try {
     const body = (typeof req.body === 'string' ? JSON.parse(req.body) : req.body ?? {}) as Record<string, unknown>
     const { status, json } = await sendLead(body, {
