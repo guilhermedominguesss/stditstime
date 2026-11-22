@@ -69,6 +69,23 @@ const cookie = (name: string) => {
   }
 }
 
+/**
+ * Código da aba "Testar eventos", se o site foi aberto com ?test_event_code=TEST…
+ * (só esse formato). Com ele, o Lead do servidor também cai na aba de teste.
+ */
+function testEventCode(): string | undefined {
+  try {
+    const c = new URLSearchParams(window.location.search).get('test_event_code') ?? sessionStorage.getItem('fv_test_event_code')
+    if (c && /^TEST[A-Z0-9]{2,16}$/.test(c)) {
+      sessionStorage.setItem('fv_test_event_code', c)
+      return c
+    }
+  } catch {
+    /* sem sessionStorage: segue sem código de teste */
+  }
+  return undefined
+}
+
 /** Lead na API de Conversões (função /api/capi na Vercel; o token nunca vem ao navegador). */
 export function capiLead(eventId: string, custom: Record<string, unknown>) {
   try {
@@ -82,6 +99,7 @@ export function capiLead(eventId: string, custom: Record<string, unknown>) {
         fbp: cookie('_fbp'),
         fbc: cookie('_fbc'),
         custom_data: custom,
+        test_event_code: testEventCode(),
       }),
       keepalive: true,
     }).catch(() => undefined)
