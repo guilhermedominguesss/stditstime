@@ -73,6 +73,17 @@ begin
       coalesce((select 'conv_10=' || conv_10 || ', ' || n || ' evento' from public.funil_sessions where id = s_lock), 'sessão não existe'),
       exists (select 1 from public.funil_sessions where id = s_lock and conv_10 = 4) and n = 1);
 
+  /* patch parcial não pode apagar os outros campos */
+  execute 'set local role anon';
+  execute 'select public.fv_patch_session($1, ''{"leads_mes": 300, "ticket": 650}''::jsonb)' using s_lock;
+  execute 'select public.fv_patch_session($1, ''{"last_scene": "resultado"}''::jsonb)' using s_lock;
+  execute 'reset role';
+  insert into fv_check (item, esperado, obtido, ok)
+  select 'patch parcial preserva os outros campos', 'conv_10=4, leads=300, ticket=650',
+         'conv_10=' || coalesce(conv_10::text, 'null') || ', leads=' || coalesce(leads_mes::text, 'null') || ', ticket=' || coalesce(ticket::text, 'null'),
+         conv_10 = 4 and leads_mes = 300 and ticket = 650
+  from public.funil_sessions where id = s_lock;
+
   select count(*) into total from public.funil_sessions;
 
   /* ---------- usuário de cliente do painel (logado, não admin) ---------- */

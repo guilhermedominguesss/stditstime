@@ -60,13 +60,14 @@ declare
 begin
   update public.funil_sessions set
     segmento      = case when f ->> 'segmento' in ('clinica', 'estetica', 'odonto', 'educacao', 'servicos', 'varejo', 'alimentacao', 'outro') then f ->> 'segmento' else segmento end,
-    leads_mes     = coalesce(least(greatest((f ->> 'leads_mes')::int, 0), 100000), leads_mes),
-    conv_10       = coalesce(least(greatest((f ->> 'conv_10')::int, 0), 10), conv_10),
-    ticket        = coalesce(least(greatest((f ->> 'ticket')::numeric, 0), 10000000), ticket),
+    -- só mexe no campo se ele veio no patch (greatest() ignora NULL e devolveria 0)
+    leads_mes     = case when f ? 'leads_mes' then least(greatest((f ->> 'leads_mes')::int, 0), 100000) else leads_mes end,
+    conv_10       = case when f ? 'conv_10' then least(greatest((f ->> 'conv_10')::int, 0), 10) else conv_10 end,
+    ticket        = case when f ? 'ticket' then least(greatest((f ->> 'ticket')::numeric, 0), 10000000) else ticket end,
     investe       = case when f ->> 'investe' in ('sim', 'as_vezes', 'ainda_nao') then f ->> 'investe' else investe end,
     faturamento   = case when f ->> 'faturamento' in ('ate_10k', '10_30k', '30_100k', '100k_mais') then f ->> 'faturamento' else faturamento end,
-    valor_em_jogo = coalesce(least(greatest((f ->> 'valor_em_jogo')::numeric, 0), 100000000), valor_em_jogo),
-    receita_extra = coalesce(least(greatest((f ->> 'receita_extra')::numeric, 0), 100000000), receita_extra),
+    valor_em_jogo = case when f ? 'valor_em_jogo' then least(greatest((f ->> 'valor_em_jogo')::numeric, 0), 100000000) else valor_em_jogo end,
+    receita_extra = case when f ? 'receita_extra' then least(greatest((f ->> 'receita_extra')::numeric, 0), 100000000) else receita_extra end,
     qualificado   = coalesce((f ->> 'qualificado')::boolean, qualificado),
     -- "whatsapp" é final: um patch atrasado não rebaixa o resultado
     outcome       = case
