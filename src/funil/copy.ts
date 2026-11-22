@@ -188,7 +188,7 @@ export const PROVA = {
 /* ------------------------------------------------------------------ */
 
 export const QUALIFICACAO = {
-  title: 'Pra eu te mostrar como seria o seu:',
+  title: 'Duas perguntas pra eu preparar o seu:',
   investe: 'Você investe em anúncio hoje?',
   investeOpt: { sim: 'Sim, todo mês', as_vezes: 'Às vezes', ainda_nao: 'Ainda não' },
   faturamento: 'Faturamento mensal aproximado',
@@ -204,17 +204,13 @@ export const QUALIFICACAO = {
 export const SAIDA_QUALIFICADO = {
   title: 'Seu funil tem conserto.',
   sheet: {
-    negocio: 'NEGÓCIO',
-    leads: 'LEADS/MÊS',
-    conv: 'CONVERSÃO HOJE',
-    ticket: 'TICKET',
     ganho: 'A MAIS (PROJEÇÃO)',
     honest: 'JÁ CONVERTE ACIMA DA MÉDIA',
   },
   subtitle: 'É assim que você vai chegar no meu WhatsApp:',
   narrator: 'Você acabou de passar por um STD. É isso que seu cliente viveria.',
   cta: 'Chamar no WhatsApp',
-  micro: 'QUEM TE RESPONDE É O GUILHERME, NÃO UM ROBÔ.',
+  micro: 'Quem te responde é o Guilherme, não um robô.',
 } as const
 
 export const SAIDA_NAO_QUALIFICADO = {

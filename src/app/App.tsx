@@ -1,7 +1,7 @@
 import { AnimatePresence, MotionConfig } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ENV, LEADS_MAX, TICKET_MIDPOINTS, isQualified, whatsappMessage, whatsappNumber,
+  ENV, TICKET_MIDPOINTS, isQualified, whatsappMessage, whatsappNumber,
   type FaturamentoId, type InvesteId, type TicketId,
 } from '../funil/config'
 import { INBOX, SAIDA_QUALIFICADO as SQ } from '../funil/copy'
@@ -10,7 +10,7 @@ import { InboxFlow, type InboxEvent, type InboxResult } from '../inbox/InboxFlow
 import { PhoneFrame } from '../inbox/parts'
 import { capiLead, initPixel, pixel } from '../tracking/pixel'
 import { tracker } from '../tracking/tracker'
-import { Prova, Qualificacao, SaidaNaoQualificado, SaidaQualificado, type SheetRow } from './scenes'
+import { Prova, Qualificacao, SaidaNaoQualificado, SaidaQualificado, type GainLine } from './scenes'
 
 /**
  * O APP (rota /): Caixa de Entrada Viva (cenas 0–7) → Prova (8) → Qualificação (9)
@@ -134,17 +134,11 @@ export default function App() {
       },
       fmt,
     )
-    const rows: SheetRow[] = [
-      { label: SQ.sheet.negocio, value: INBOX.segmentChip[result.segment] },
-      { label: SQ.sheet.leads, value: result.leads >= LEADS_MAX ? '1.000+' : fmt(result.leads) },
-      { label: SQ.sheet.conv, value: `${result.a10}/10` },
-      { label: SQ.sheet.ticket, value: ticketLabel },
-      diag.honest
-        ? { label: SQ.sheet.ganho, value: SQ.sheet.honest, accent: true }
-        : { label: SQ.sheet.ganho, value: `+ R$ ${fmt(diag.receitaExtra)}/mês`, accent: true },
-    ]
+    const gain: GainLine = diag.honest
+      ? { label: SQ.sheet.ganho, value: SQ.sheet.honest }
+      : { label: SQ.sheet.ganho, value: `+ R$ ${fmt(diag.receitaExtra)}/mês` }
     const href = `https://wa.me/${whatsappNumber(ENV.whatsappNumber)}?text=${encodeURIComponent(message)}`
-    return { message, rows, href }
+    return { message, gain, href }
   }, [result])
 
   /** O único lugar que dispara Lead: clique de WhatsApp de lead QUALIFICADO. */
@@ -182,7 +176,7 @@ export default function App() {
         </AnimatePresence>
         <AnimatePresence>
           {scene === 'saida_qualificado' && exit && (
-            <SaidaQualificado key="sq" rows={exit.rows} message={exit.message} href={exit.href} onWhatsApp={onWhatsApp} />
+            <SaidaQualificado key="sq" gain={exit.gain} message={exit.message} href={exit.href} onWhatsApp={onWhatsApp} />
           )}
           {scene === 'saida_nao_qualificado' && (
             <SaidaNaoQualificado

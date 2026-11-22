@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronLeft, ExternalLink, MessageCircle } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   CASE_REF, ENV, FATURAMENTO_OPTIONS, INSTAGRAM, INVESTE_OPTIONS,
   type FaturamentoId, type InvesteId,
@@ -15,6 +15,17 @@ import { CountUp, vibrate } from '../inbox/parts'
 /* ------------------------------------------------------------------ */
 
 function Screen({ children, onBack, z = 40, footer }: { children: ReactNode; onBack?: () => void; z?: number; footer?: ReactNode }) {
+  // barra fixa sobreposta: o conteúdo ganha padding-bottom = altura medida da barra + 24px
+  const footerRef = useRef<HTMLDivElement>(null)
+  const [footerH, setFooterH] = useState(0)
+  useEffect(() => {
+    const el = footerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setFooterH(el.offsetHeight))
+    ro.observe(el)
+    setFooterH(el.offsetHeight)
+    return () => ro.disconnect()
+  }, [])
   return (
     <motion.section
       className="absolute inset-0 flex flex-col bg-[#0B0C0F]"
@@ -30,8 +41,21 @@ function Screen({ children, onBack, z = 40, footer }: { children: ReactNode; onB
           </button>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6">{children}</div>
-      {footer && <div className="pb-safe shrink-0 border-t border-line bg-[#0B0C0F] px-5 pb-4 pt-3">{footer}</div>}
+      <div
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6"
+        style={footer ? { paddingBottom: footerH + 24 } : undefined}
+      >
+        {children}
+      </div>
+      {footer && (
+        <div
+          ref={footerRef}
+          className="absolute inset-x-0 bottom-0 border-t border-line bg-[#0B0C0F] px-5 pt-3"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+        >
+          {footer}
+        </div>
+      )}
     </motion.section>
   )
 }
@@ -258,10 +282,11 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 /* Cena 10A · Saída qualificado                                        */
 /* ------------------------------------------------------------------ */
 
-export interface SheetRow { label: string; value: string; accent?: boolean }
+/** Linha de destaque da saída: "A MAIS (PROJEÇÃO)" + valor (ou a variante honesta). */
+export interface GainLine { label: string; value: string }
 
-export function SaidaQualificado({ rows, message, href, onWhatsApp }: {
-  rows: SheetRow[]; message: string; href: string; onWhatsApp: () => void
+export function SaidaQualificado({ gain, message, href, onWhatsApp }: {
+  gain: GainLine; message: string; href: string; onWhatsApp: () => void
 }) {
   return (
     <Screen
@@ -269,19 +294,15 @@ export function SaidaQualificado({ rows, message, href, onWhatsApp }: {
       footer={
         <>
           <Primary href={href} onClick={onWhatsApp} icon={<MessageCircle className="h-5 w-5" aria-hidden="true" />}>{SAIDA_QUALIFICADO.cta}</Primary>
-          <p className="mt-2.5 text-center font-mono text-[12px] uppercase tracking-telemetry text-ink-muted">{SAIDA_QUALIFICADO.micro}</p>
+          <p className="mt-3 text-center text-[12px] font-medium leading-tight text-ink-muted">{SAIDA_QUALIFICADO.micro}</p>
         </>
       }
     >
       <h2 className="text-[30px] font-semibold leading-[1.08] tracking-[-0.01em] text-ink">{SAIDA_QUALIFICADO.title}</h2>
-      <dl className="mt-5 rounded-2xl border border-line bg-bg-raised px-4 py-3 font-mono text-[15px]">
-        {rows.map((r) => (
-          <div key={r.label} className="flex justify-between gap-3 py-1">
-            <dt className="text-ink-muted">{r.label}</dt>
-            <dd className={`text-right ${r.accent ? 'text-signal' : 'text-ink'}`}>{r.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="mt-5 rounded-2xl border border-signal/30 bg-bg-raised px-4 py-3">
+        <p className="text-[15px] font-semibold tracking-[0.02em] text-ink-muted">{gain.label}</p>
+        <p className="mt-0.5 font-mono text-[28px] font-medium leading-tight text-signal">{gain.value}</p>
+      </div>
       <p className="mt-6 text-[17px] font-semibold text-ink">{SAIDA_QUALIFICADO.subtitle}</p>
       <div className="mt-3 flex justify-end">
         <div className="max-w-[92%] whitespace-pre-line rounded-2xl rounded-br-md bg-[#2A2F37] px-4 py-3 text-[15px] leading-snug text-ink">{message}</div>

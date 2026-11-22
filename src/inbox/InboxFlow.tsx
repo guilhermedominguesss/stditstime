@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowUp, User } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { INBOX_BANK, LEADS_SHORTCUTS, TICKET_MIDPOINTS, type InboxNiche, type SegmentId, type TicketId } from '../funil/config'
+import { HIGHLIGHT_ANNUAL_BELOW, INBOX_BANK, LEADS_SHORTCUTS, TICKET_MIDPOINTS, type InboxNiche, type SegmentId, type TicketId } from '../funil/config'
 import { INBOX as C } from '../funil/copy'
 import { diagnose, fmt, type Diagnosis } from '../funil/math'
 import { EASE_OUT_EXPO } from '../funil/tokens'
@@ -509,7 +509,8 @@ function RealBox({ diag, boxRef }: { diag: Diagnosis; boxRef: React.Ref<HTMLElem
       aria-live="polite"
     >
       <h2 className="text-[16px] font-semibold text-ink">{C.realTitle}</h2>
-      {!diag.honest && (
+      {/* ganho pequeno: o anual impressiona mais; ganho grande: o mensal já fala por si */}
+      {!diag.honest && diag.receitaExtra < HIGHLIGHT_ANNUAL_BELOW && (
         <div className="mt-2">
           <p className="font-mono text-[30px] font-medium leading-tight text-signal">
             + R$ <CountUp value={diag.receitaExtra * 12} ms={1400} />
@@ -517,6 +518,17 @@ function RealBox({ diag, boxRef }: { diag: Diagnosis; boxRef: React.Ref<HTMLElem
           <p className="text-[15px] text-ink">
             {C.realAnnual} · <span className="font-mono text-signal">+ R$ <CountUp value={diag.receitaExtra} ms={1100} /></span>
             <span className="text-ink-muted">{C.perMonth}</span>
+          </p>
+        </div>
+      )}
+      {!diag.honest && diag.receitaExtra >= HIGHLIGHT_ANNUAL_BELOW && (
+        <div className="mt-2">
+          <p className="font-mono text-[30px] font-medium leading-tight text-signal">
+            + R$ <CountUp value={diag.receitaExtra} ms={1200} />
+            <span className="text-[17px] text-ink-muted">{C.perMonth}</span>
+          </p>
+          <p className="text-[15px] text-ink">
+            <span className="font-mono text-ink-muted">+ R$ <CountUp value={diag.receitaExtra * 12} ms={1400} /></span> {C.realAnnual}
           </p>
         </div>
       )}

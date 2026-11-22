@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { whatsappMessage, whatsappNumber } from '../funil/config'
+import { WHATSAPP_NUMBER_DEFAULT, whatsappMessage, whatsappNumber } from '../funil/config'
 import { fmt } from '../funil/math'
 import { REF_CODE_RE, detectDevice, detectInAppBrowser, generateRefCode, readAttribution } from './session'
 
@@ -48,6 +48,11 @@ describe('WhatsApp', () => {
   })
   it('1.000 leads aparece como 1.000+', () => {
     expect(whatsappMessage({ ...base, leads: 1000, receitaExtraMes: 1 }, fmt)).toContain('Leads/mês: 1.000+')
+  })
+  it('o número padrão abre a conversa com o Guilherme (55 + DDD + número)', () => {
+    expect(whatsappNumber(WHATSAPP_NUMBER_DEFAULT)).toBe('5541984804266')
+    expect(whatsappNumber('41984804266')).toBe('5541984804266')
+    expect(whatsappNumber('+55 (41) 98480-4266')).toBe('5541984804266')
   })
   it('normaliza o número com DDI 55', () => {
     expect(whatsappNumber('(41) 99999-8888')).toBe('5541999998888')
