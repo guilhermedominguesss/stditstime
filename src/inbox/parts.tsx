@@ -249,6 +249,107 @@ export function TriageCardV2({ p, idx, extraLabel, seenBefore, onOpen }: {
   )
 }
 
+/* ---------------- v3 (/lab6 e app) ---------------- */
+
+/** Etiqueta compacta: 12px, padding 2px 8px; sempre na mesma linha do nome. */
+export function Tag({ ready }: { ready: boolean }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] font-semibold leading-[1.25] ${
+        ready ? 'bg-signal/15 text-signal' : 'border border-line text-ink-muted'
+      }`}
+    >
+      {ready ? C.readyTag : C.researchingTag}
+    </span>
+  )
+}
+
+/** Nome que só trunca (com reticências) em telas menores que 360px. */
+const NAME = 'whitespace-nowrap text-[16px] font-semibold leading-tight text-ink max-[359px]:min-w-0 max-[359px]:truncate'
+
+/** Card completo: todos os campos + "Viu antes de chamar". */
+export function TriageCardFull({ p, idx, extraLabel, seenBefore, onOpen }: {
+  p: InboxPerson; idx: number; extraLabel: string; seenBefore: string[]; onOpen?: () => void
+}) {
+  return (
+    <motion.button
+      type="button"
+      layout
+      disabled={!onOpen}
+      onClick={(e) => { e.stopPropagation(); onOpen?.() }}
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE_OUT_EXPO } }}
+      whileTap={onOpen ? { scale: 0.985 } : undefined}
+      className="w-full rounded-2xl border border-line bg-bg-raised px-3.5 py-2.5 text-left"
+    >
+      <div className="flex items-center gap-2.5">
+        <Avatar name={p.name} idx={idx} size={26} />
+        <span className={NAME}>{p.name}</span>
+        <span className="ml-auto" />
+        <Tag ready={p.ready} />
+      </div>
+      <p className="mt-1 line-clamp-2 text-[15px] leading-[1.28]">
+        <span className="text-ink-muted">{C.fieldQuer}:</span> <span className="text-ink">{p.quer}</span>
+        <span className="text-ink-muted"> · {C.fieldQuando}:</span> <span className="text-ink">{p.quando}</span>
+        <span className="text-ink-muted"> · {extraLabel}:</span> <span className="text-ink">{p.extra}</span>
+      </p>
+      {p.ready && (
+        <p className="mt-1.5 flex gap-1.5 text-[15px] leading-[1.28] text-ink/85">
+          <Eye className="mt-[2px] h-4 w-4 shrink-0 text-signal" strokeWidth={2} aria-hidden="true" />
+          <span>{C.seenBeforeFooter} {seenBefore.join(' · ')}</span>
+        </p>
+      )}
+    </motion.button>
+  )
+}
+
+/** Card compacto, numa linha: avatar + nome + "Quer: x" + etiqueta. Tocar expande. */
+export function TriageCardCompact({ p, idx, onExpand }: { p: InboxPerson; idx: number; onExpand: () => void }) {
+  return (
+    <motion.button
+      type="button"
+      layout
+      onClick={(e) => { e.stopPropagation(); onExpand() }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT_EXPO } }}
+      whileTap={{ scale: 0.985 }}
+      className="flex h-12 w-full items-center gap-2.5 rounded-2xl border border-line bg-bg-raised px-3.5 text-left"
+      aria-expanded={false}
+    >
+      <Avatar name={p.name} idx={idx} size={26} />
+      <span className={NAME}>{p.name}</span>
+      {/* só o valor do "Quer" (sem rótulo): numa tela de 390px, nome + etiqueta já ocupam quase tudo */}
+      <span className="min-w-0 flex-1 truncate text-[15px] text-ink-muted" aria-label={`${C.fieldQuer}: ${p.quer}`}>{p.quer}</span>
+      <Tag ready={p.ready} />
+    </motion.button>
+  )
+}
+
+/** Scroll com duração fixa (o "smooth" nativo não deixa escolher). Respeita motion reduzido. */
+export function smoothScrollTo(el: HTMLElement, top: number, ms = 600) {
+  const target = Math.max(0, Math.min(top, el.scrollHeight - el.clientHeight))
+  if (reduced()) { el.scrollTop = target; return }
+  const from = el.scrollTop
+  const t0 = performance.now()
+  const step = (t: number) => {
+    const k = Math.min(1, (t - t0) / ms)
+    el.scrollTop = from + (target - from) * (1 - Math.pow(1 - k, 3))
+    if (k < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+
+/** Moldura: tela cheia no celular; "aparelho" só acima de 768px. */
+export function PhoneFrame({ children }: { children: ReactNode }) {
+  return (
+    <main className="flex h-dvh-safe w-full items-center justify-center bg-bg md:p-6">
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0B0C0F] md:h-[min(844px,calc(100dvh-48px))] md:w-[390px] md:rounded-[44px] md:border-[10px] md:border-[#1C1F24]">
+        {children}
+      </div>
+    </main>
+  )
+}
+
 /** 3 dos 5 itens do nicho, variando por pessoa. */
 export const seenFor = (items: string[], idx: number) => [0, 1, 2].map((j) => items[(idx + j * 2) % items.length])
 

@@ -162,4 +162,64 @@ export const INBOX = {
   proofLabel: 'CASO REAL · ÚLTIMOS 30 DIAS',
   proofPlaceholder: 'A cena da prova entra aqui (Fase 6).',
   proofBack: 'Voltar à caixa de entrada',
+  realAnnual: 'em 12 meses',
+  realSecond: 'Em 100% das conversas, você sabe quem está pronto antes de responder.',
+} as const
+
+/* ------------------------------------------------------------------ */
+/* Cena 8 · Prova ("Isso é real?")                                     */
+/* ------------------------------------------------------------------ */
+
+export const PROVA = {
+  label: 'CASO REAL · ÚLTIMOS 30 DIAS',
+  bars: { leads: 'LEADS', appointments: 'AGENDAMENTOS', closes: 'FECHAMENTOS' },
+  chips: { qualified: 'RESPOSTAS QUALIFICADAS', abandon: 'DE ABANDONO', leadToClient: 'DE LEAD A CLIENTE' },
+  fine: 'Resultado do funil completo: tráfego + STD + comercial da clínica.',
+  openStd: 'Ver o STD da Thais por dentro',
+  backToFunnel: 'Voltar ao meu funil',
+  openNewTab: 'Abrir em nova aba',
+  iframeBlocked: 'O navegador não deixou abrir aqui dentro.',
+  cta: 'Quero um desses',
+  back: 'Voltar',
+} as const
+
+/* ------------------------------------------------------------------ */
+/* Cena 9 · Qualificação                                               */
+/* ------------------------------------------------------------------ */
+
+export const QUALIFICACAO = {
+  title: 'Pra eu te mostrar como seria o seu:',
+  investe: 'Você investe em anúncio hoje?',
+  investeOpt: { sim: 'Sim, todo mês', as_vezes: 'Às vezes', ainda_nao: 'Ainda não' },
+  faturamento: 'Faturamento mensal aproximado',
+  faturamentoOpt: { ate_10k: 'Até R$10 mil', '10_30k': 'R$10 a 30 mil', '30_100k': 'R$30 a 100 mil', '100k_mais': 'Acima de R$100 mil' },
+  cta: 'Ver meu resultado',
+  missing: 'Escolha uma opção em cada pergunta.',
+} as const
+
+/* ------------------------------------------------------------------ */
+/* Cena 10 · Saídas                                                    */
+/* ------------------------------------------------------------------ */
+
+export const SAIDA_QUALIFICADO = {
+  title: 'Seu funil tem conserto.',
+  sheet: {
+    negocio: 'NEGÓCIO',
+    leads: 'LEADS/MÊS',
+    conv: 'CONVERSÃO HOJE',
+    ticket: 'TICKET',
+    ganho: 'A MAIS (PROJEÇÃO)',
+    honest: 'JÁ CONVERTE ACIMA DA MÉDIA',
+  },
+  subtitle: 'É assim que você vai chegar no meu WhatsApp:',
+  narrator: 'Você acabou de passar por um STD. É isso que seu cliente viveria.',
+  cta: 'Chamar no WhatsApp',
+  micro: 'QUEM TE RESPONDE É O GUILHERME, NÃO UM ROBÔ.',
+} as const
+
+export const SAIDA_NAO_QUALIFICADO = {
+  title: 'Seu funil ainda não precisa de um STD.',
+  subtitle: 'Precisa disso primeiro. Os 7 vazamentos mais comuns:',
+  footer: 'Quando o seu volume crescer, refaça o Funil Vivo.',
+  restart: 'Refazer agora',
 } as const

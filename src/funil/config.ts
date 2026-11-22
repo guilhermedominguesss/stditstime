@@ -314,3 +314,78 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
     ],
   },
 }
+
+/* ------------------------------------------------------------------ */
+/* Ambiente (Vercel → Project Settings → Environment Variables)        */
+/* ------------------------------------------------------------------ */
+
+const env = import.meta.env
+export const ENV = {
+  supabaseUrl: env.VITE_SUPABASE_URL ?? '',
+  supabaseAnonKey: env.VITE_SUPABASE_ANON_KEY ?? '',
+  whatsappNumber: env.VITE_WHATSAPP_NUMBER ?? '',
+  metaPixelId: env.VITE_META_PIXEL_ID ?? '',
+  thaisStdUrl: env.VITE_THAIS_STD_URL ?? '',
+}
+
+/** Instagram do rodapé da saída de não qualificado. */
+export const INSTAGRAM = { handle: '@guilhermedominguees', url: 'https://www.instagram.com/guilhermedominguees/' } as const
+
+/**
+ * Flag da saída de não qualificado: campo de WhatsApp para "receber o checklist"
+ * (remarketing). Desligado até haver base legal/consentimento definidos.
+ */
+export const NOT_QUALIFIED_CAPTURE = false
+
+/* ------------------------------------------------------------------ */
+/* refCode e mensagem do WhatsApp                                      */
+/* ------------------------------------------------------------------ */
+
+/** "FV-" + 4 caracteres. Sem 0/O, 1/I/L: fácil de ler no WhatsApp (alfabeto do STD Berti). */
+export const REF_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+export const REF_PREFIX = 'FV-'
+
+export interface WhatsAppData {
+  segmento: string
+  leads: number
+  conv10: number
+  ticketLabel: string
+  /** receita a mais por mês (projeção conservadora); null = variante honesta */
+  receitaExtraMes: number | null
+  refCode: string
+}
+
+/**
+ * Mensagem que chega no WhatsApp do Guilherme (o lead vê a prévia antes de enviar).
+ * Adaptada do brief: a pergunta de rota saiu do fluxo da caixa de entrada, e o valor
+ * mostrado é o mesmo que a pessoa viu no app (receita a mais, projeção conservadora).
+ */
+export function whatsappMessage(d: WhatsAppData, money: (n: number) => string): string {
+  const ganho = d.receitaExtraMes == null
+    ? 'Meu funil já converte acima da média: quero escalar sem perder qualidade.'
+    : `Projeção: + R$ ${money(d.receitaExtraMes)}/mês`
+  return [
+    'Olá, Guilherme! Fiz o Funil Vivo.',
+    '',
+    `Negócio: ${d.segmento}`,
+    `Leads/mês: ${d.leads >= LEADS_MAX ? '1.000+' : d.leads}`,
+    `Conversão hoje: ${d.conv10}/10 · Ticket: ${d.ticketLabel}`,
+    ganho,
+    '',
+    `Quero ver como seria um STD pro meu negócio. [${d.refCode}]`,
+  ].join('\n')
+}
+
+/** Número só com dígitos e DDI 55 (aceita com ou sem o 55 na variável de ambiente). */
+export function whatsappNumber(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return ''
+  return digits.startsWith('55') && digits.length >= 12 ? digits : `55${digits}`
+}
+
+/* ------------------------------------------------------------------ */
+/* Qualificação (cena 9)                                               */
+/* ------------------------------------------------------------------ */
+
+export const INVESTE_OPTIONS: InvesteId[] = ['sim', 'as_vezes', 'ainda_nao']
+export const FATURAMENTO_OPTIONS: FaturamentoId[] = ['ate_10k', '10_30k', '30_100k', '100k_mais']
