@@ -5,6 +5,8 @@ import './index.css'
 const Lab = lazy(() => import('./lab/Lab'))
 const Lab2 = lazy(() => import('./lab2/Lab2'))
 const Lab3 = lazy(() => import('./lab3/Lab3'))
+const Lab4 = lazy(() => import('./lab4/Lab4'))
+const ROUTES: Record<string, ReturnType<typeof lazy>> = { '/lab': Lab, '/lab2': Lab2, '/lab3': Lab3, '/lab4': Lab4 }
 
 const path = window.location.pathname.replace(/\/+$/, '')
 
@@ -21,16 +23,25 @@ function Placeholder() {
       <a href="/lab3" className="font-mono text-sm uppercase tracking-telemetry text-ink underline underline-offset-4">
         /lab3 · caixa de entrada por nicho
       </a>
+      <a href="/lab4" className="font-mono text-sm uppercase tracking-telemetry text-ink underline underline-offset-4">
+        /lab4 · base do app
+      </a>
     </main>
+  )
+}
+
+function Page() {
+  const Screen = ROUTES[path]
+  if (!Screen) return <Placeholder />
+  return (
+    <Suspense fallback={null}>
+      <Screen />
+    </Suspense>
   )
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {path === '/lab' || path === '/lab2' || path === '/lab3' ? (
-      <Suspense fallback={null}>{path === '/lab' ? <Lab /> : path === '/lab2' ? <Lab2 /> : <Lab3 />}</Suspense>
-    ) : (
-      <Placeholder />
-    )}
+    <Page />
   </StrictMode>,
 )

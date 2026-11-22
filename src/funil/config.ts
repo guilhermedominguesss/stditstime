@@ -156,10 +156,30 @@ export interface InboxPerson {
 export interface InboxNiche {
   /** rótulo do 3º campo do card (ex.: "1ª vez") */
   extraLabel: string
-  /** preço da resposta "O valor é R$ X!": ILUSTRATIVO, ordem de grandeza do ticket do nicho */
-  priceExample: number
+  /**
+   * Ticket médio ILUSTRATIVO do nicho (ordem de grandeza). Usado no "≈ R$ em conversas
+   * perdidas" antes de a pessoa dizer o próprio ticket, e na resposta dos nichos sem conselho.
+   */
+  ticketMedio: number
+  /**
+   * Resposta pré-digitada na demo da dor. Odonto, estética e clínica NÃO mostram preço
+   * (regras de conselho profissional): respondem que depende da avaliação.
+   */
+  reply: string
+  /**
+   * "Antes de chamar, viu:" — páginas/etapas do STD que a pessoa viu antes do WhatsApp.
+   * 5 por nicho; cada card mostra 3. NUNCA preço (regras de conselho profissional).
+   */
+  seenBefore: string[]
   people: InboxPerson[]
 }
+
+/** Resposta dos nichos regulados por conselho (sem preço). */
+export const REPLY_AVALIACAO = 'Depende da avaliação! Quer agendar um horário?'
+const priceReply = (v: number) => `O valor é R$ ${v.toLocaleString('pt-BR')}!`
+
+/** Nomes extras para a pergunta "de cada 10" (o nicho tem 8 pessoas). */
+export const INBOX_EXTRA_NAMES = ['Ana Paula', 'José Carlos'] as const
 
 const P = (name: string, msg: string, readyBefore: boolean, ready: boolean, quer: string, quando: string, extra: string): InboxPerson =>
   ({ name, msg, readyBefore, ready, quer, quando, extra })
@@ -167,7 +187,9 @@ const P = (name: string, msg: string, readyBefore: boolean, ready: boolean, quer
 export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
   estetica: {
     extraLabel: '1ª vez',
-    priceExample: 650,
+    ticketMedio: 650,
+    reply: REPLY_AVALIACAO,
+    seenBefore: ['como funciona', 'resultados reais', 'quantas sessões', 'tempo de recuperação', 'quem pode fazer'],
     people: [
       P('Mariana Costa', 'oi, quanto custa o botox?', false, true, 'Botox · testa', 'até dia 12', 'sim'),
       P('Rafael Nunes', 'valor?', false, true, 'Harmonização · queixo', 'este mês', 'sim'),
@@ -180,10 +202,12 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
     ],
   },
   odonto: {
-    extraLabel: 'Já avaliou',
-    priceExample: 1200,
+    extraLabel: 'Já fez avaliação',
+    ticketMedio: 1200,
+    reply: REPLY_AVALIACAO,
+    seenBefore: ['como funciona', 'tempo de tratamento', 'o que está incluso', 'casos reais', 'cuidados depois'],
     people: [
-      P('Paulo Henrique', 'quanto é o clareamento?', false, true, 'Clareamento', 'antes do casamento, em março', 'não'),
+      P('Paulo Henrique', 'quanto é o clareamento?', false, true, 'Clareamento', 'antes do casamento', 'não'),
       P('Aline Martins', 'valor?', false, true, 'Facetas · 4 dentes', 'este mês', 'sim'),
       P('Marcos Vinícius', 'tem horário pra avaliação amanhã?', true, true, 'Avaliação', 'amanhã cedo', 'não'),
       P('Patrícia Lima', '?', false, false, 'Aparelho', 'ainda vendo preços', 'não'),
@@ -195,7 +219,9 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
   },
   clinica: {
     extraLabel: 'Para quem',
-    priceExample: 280,
+    ticketMedio: 280,
+    reply: REPLY_AVALIACAO,
+    seenBefore: ['especialidades', 'como é a consulta', 'convênios aceitos', 'horários', 'preparo para exames'],
     people: [
       P('Roberto Alves', 'quanto é a consulta?', false, true, 'Consulta · cardiologia', 'esta semana', 'ele mesmo'),
       P('Sandra Moura', 'valor?', false, true, 'Check-up completo', 'este mês', 'ela mesma'),
@@ -209,7 +235,9 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
   },
   educacao: {
     extraLabel: 'Nível',
-    priceExample: 390,
+    ticketMedio: 390,
+    reply: priceReply(390),
+    seenBefore: ['metodologia', 'duração do curso', 'certificado', 'turmas e horários', 'aula experimental'],
     people: [
       P('Lucas Andrade', 'quanto é a mensalidade?', false, true, 'Inglês', 'começar em fevereiro', 'intermediário'),
       P('Gabriela Lopes', 'valor?', false, true, 'Espanhol · viagem', 'começar este mês', 'básico'),
@@ -223,7 +251,9 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
   },
   servicos: {
     extraLabel: 'Verba',
-    priceExample: 2500,
+    ticketMedio: 2500,
+    reply: priceReply(2500),
+    seenBefore: ['como funciona', 'prazo de entrega', 'o que está incluso', 'trabalhos feitos', 'garantia'],
     people: [
       P('Ricardo Moraes', 'quanto custa um projeto?', false, true, 'Reforma · cozinha', 'prazo de 30 dias', 'definida'),
       P('Tatiane Freitas', 'valor?', false, true, 'Contabilidade · abrir LTDA', 'este mês', 'definida'),
@@ -237,7 +267,9 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
   },
   varejo: {
     extraLabel: 'Entrega',
-    priceExample: 189,
+    ticketMedio: 189,
+    reply: priceReply(189),
+    seenBefore: ['catálogo', 'prazo de entrega', 'trocas e devolução', 'tamanhos', 'retirada na loja'],
     people: [
       P('Marcelo Pinto', 'quanto custa?', false, true, 'Kit presente', 'até sexta', 'retira na loja'),
       P('Débora Lins', 'valor?', false, true, 'Pedido semanal · escritório', 'toda segunda', 'entrega'),
@@ -251,7 +283,9 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
   },
   alimentacao: {
     extraLabel: 'Pessoas',
-    priceExample: 320,
+    ticketMedio: 320,
+    reply: priceReply(320),
+    seenBefore: ['cardápio', 'prazo de encomenda', 'como é a entrega', 'quantidades', 'opções sem glúten'],
     people: [
       P('Sérgio Campos', 'quanto é o kit festa?', false, true, 'Kit festa', 'sábado', '40'),
       P('Mônica Farias', 'valor?', false, true, 'Bolo de aniversário', 'dia 18', '25'),
@@ -265,7 +299,9 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
   },
   outro: {
     extraLabel: 'Já é cliente',
-    priceExample: 450,
+    ticketMedio: 450,
+    reply: priceReply(450),
+    seenBefore: ['como funciona', 'o que está incluso', 'prazos', 'quem já é cliente', 'horários'],
     people: [
       P('Rogério Fontes', 'quanto custa?', false, true, 'Primeiro atendimento', 'esta semana', 'não'),
       P('Paula Mendes', 'valor?', false, true, 'Pacote mensal', 'este mês', 'sim'),

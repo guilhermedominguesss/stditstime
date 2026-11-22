@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INBOX_BANK } from './config'
+import { INBOX_BANK, REPLY_AVALIACAO } from './config'
 
 describe('banco da caixa de entrada por nicho', () => {
   it.each(Object.entries(INBOX_BANK))('%s segue as regras da demo', (_k, niche) => {
@@ -14,5 +14,13 @@ describe('banco da caixa de entrada por nicho', () => {
     expect(ps.filter((p) => p.readyBefore).every((p) => p.ready)).toBe(true)
     expect(ps.filter((p) => p.ready)).toHaveLength(6)
     expect(new Set(ps.map((p) => p.name)).size).toBe(8)
+    // "Antes de chamar, viu:" nunca fala de preço (regras de conselho profissional)
+    expect(niche.seenBefore).toHaveLength(5)
+    for (const s of niche.seenBefore) expect(s).not.toMatch(/R\$|preço|valor|custa/i)
+  })
+
+  it.each(['odonto', 'estetica', 'clinica'] as const)('%s não responde com preço (conselho profissional)', (k) => {
+    expect(INBOX_BANK[k].reply).toBe(REPLY_AVALIACAO)
+    expect(INBOX_BANK[k].reply).not.toMatch(/R\$/)
   })
 })

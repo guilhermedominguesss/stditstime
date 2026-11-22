@@ -6,7 +6,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CASE_REF, INBOX_BANK, type InboxNiche, type InboxPerson, type SegmentId } from '../funil/config'
 import { INBOX as C } from '../funil/copy'
-import { fmt } from '../funil/math'
 import { AVATAR_TONES, EASE_OUT_EXPO } from '../funil/tokens'
 import { Rolling } from '../funil/ui/Rolling'
 
@@ -269,7 +268,7 @@ export default function Lab3() {
                   >
                     <p className="flex flex-wrap items-baseline gap-x-2 px-4 py-3 text-[15px] font-semibold text-leak" aria-live="polite">
                       <span className="font-mono text-[20px] tabular"><Rolling value={ghosted.length} /> DE {TOTAL}</span>
-                      <span>{C.ghostCounter(ghosted.length, TOTAL)[1]}</span>
+                      <span>{C.ghostCounter}</span>
                     </p>
                   </motion.div>
                 )}
@@ -422,7 +421,7 @@ export default function Lab3() {
                   <ChatPain
                     p={people[TOP]}
                     idx={TOP}
-                    price={fmt(niche.priceExample)}
+                    reply={niche.reply}
                     step={chatStep}
                     onSend={send}
                     onFastForward={chatStep !== 'compose' && chatStep !== 'sent' ? closeChat : undefined}
@@ -606,7 +605,7 @@ function Score({ readyBefore, readyAfter, total }: { readyBefore: number; readyA
           <span className="text-[15px] font-semibold tracking-[0.02em] text-ink-muted">{C.scoreReady}</span>
           <ScoreNums from={readyBefore} to={readyAfter} delay={500} />
         </div>
-        <p className="mt-1 text-[15px] leading-snug text-ink-muted">{C.scoreReadySub(pct)}</p>
+        <p className="mt-1 text-[15px] leading-snug text-ink-muted">{C.scoreReadySub(pct, null)}</p>
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line px-4 py-3">
         <span className="text-[15px] font-semibold tracking-[0.02em] text-ink-muted">{C.scoreIdentified}</span>
@@ -654,8 +653,8 @@ function ChatShell({ children, header, onClick }: { children: React.ReactNode; h
   )
 }
 
-function ChatPain({ p, idx, price, step, onSend, onFastForward }: {
-  p: InboxPerson; idx: number; price: string; step: ChatStep; onSend: () => void; onFastForward?: () => void
+function ChatPain({ p, idx, reply, step, onSend, onFastForward }: {
+  p: InboxPerson; idx: number; reply: string; step: ChatStep; onSend: () => void; onFastForward?: () => void
 }) {
   const sent = step !== 'compose'
   const seen = step === 'seen' || step === 'typing' || step === 'silence'
@@ -684,7 +683,7 @@ function ChatPain({ p, idx, price, step, onSend, onFastForward }: {
           <Bubble side="in" time={time(idx)}>{p.msg}</Bubble>
           {sent && (
             <motion.div layoutId="reply" transition={{ duration: 0.5, ease: EASE_OUT_EXPO }} className="self-end max-w-[80%]">
-              <div className="rounded-2xl rounded-br-md bg-[#2A2F37] px-3.5 py-2.5 text-[16px] leading-snug text-ink">{C.reply(price)}</div>
+              <div className="rounded-2xl rounded-br-md bg-[#2A2F37] px-3.5 py-2.5 text-[16px] leading-snug text-ink">{reply}</div>
             </motion.div>
           )}
           <AnimatePresence>
@@ -725,7 +724,7 @@ function ChatPain({ p, idx, price, step, onSend, onFastForward }: {
           {!sent ? (
             <div className="flex items-end gap-2">
               <motion.div layoutId="reply" transition={{ duration: 0.5, ease: EASE_OUT_EXPO }} className="min-w-0 flex-1 rounded-2xl border border-line bg-bg-raised px-3.5 py-2.5">
-                <div className="text-[16px] leading-snug text-ink">{C.reply(price)}</div>
+                <div className="text-[16px] leading-snug text-ink">{reply}</div>
               </motion.div>
               <motion.button
                 type="button"
