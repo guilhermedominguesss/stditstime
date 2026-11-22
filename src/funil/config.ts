@@ -322,6 +322,9 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
 /** WhatsApp do Guilherme (55 + DDD + número). A variável VITE_WHATSAPP_NUMBER, se existir, tem prioridade. */
 export const WHATSAPP_NUMBER_DEFAULT = '5541984804266'
 
+/** STD publicado da Thais (cena da prova). VITE_THAIS_STD_URL, se existir, tem prioridade. */
+export const THAIS_STD_URL_DEFAULT = 'https://thais-lac.vercel.app'
+
 /**
  * Destaque do resultado na caixa real: abaixo deste ganho mensal (R$), o ANUAL vai em
  * destaque (o mensal pequeno parece pouco); a partir dele, o MENSAL vai em destaque.
@@ -335,7 +338,7 @@ export const ENV = {
   // Sem número, o wa.me abre "Compartilhe no WhatsApp" em vez da conversa: por isso há um padrão.
   whatsappNumber: env.VITE_WHATSAPP_NUMBER || WHATSAPP_NUMBER_DEFAULT,
   metaPixelId: env.VITE_META_PIXEL_ID ?? '',
-  thaisStdUrl: env.VITE_THAIS_STD_URL ?? '',
+  thaisStdUrl: env.VITE_THAIS_STD_URL || THAIS_STD_URL_DEFAULT,
 }
 
 /** Instagram do rodapé da saída de não qualificado. */
