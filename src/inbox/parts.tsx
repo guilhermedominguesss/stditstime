@@ -1,6 +1,6 @@
 import { AnimatePresence, LayoutGroup, motion, type Variants } from 'framer-motion'
 import {
-  Briefcase, CheckCheck, ChevronLeft, CircleEllipsis, GraduationCap, Smile, Sparkles,
+  Briefcase, CheckCheck, ChevronLeft, CircleEllipsis, Eye, GraduationCap, Smile, Sparkles,
   Stethoscope, Store, UtensilsCrossed, type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -199,6 +199,52 @@ export function TriageCard({ p, idx, extraLabel, seenBefore, onOpen }: {
         <span className="text-ink-muted"> · {C.fieldQuando}:</span> <span className="text-ink">{p.quando}</span>
         <span className="text-ink-muted"> · {extraLabel}:</span> <span className="text-ink">{p.extra}</span>
       </p>
+    </motion.button>
+  )
+}
+
+/**
+ * Card v2 (/lab5): linha 1 avatar + nome + etiqueta (o nome nunca trunca: a etiqueta
+ * quebra para a linha de baixo); linha 2 os 3 campos; rodapé "Viu antes de chamar".
+ */
+export function TriageCardV2({ p, idx, extraLabel, seenBefore, onOpen }: {
+  p: InboxPerson; idx: number; extraLabel: string; seenBefore: string[]; onOpen?: () => void
+}) {
+  return (
+    <motion.button
+      type="button"
+      layout="position"
+      disabled={!onOpen}
+      onClick={(e) => { e.stopPropagation(); onOpen?.() }}
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE_OUT_EXPO } }}
+      whileTap={onOpen ? { scale: 0.985 } : undefined}
+      className="w-full rounded-2xl border border-line bg-bg-raised px-3.5 py-2.5 text-left"
+    >
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <div className="flex items-center gap-2.5">
+          <Avatar name={p.name} idx={idx} size={26} />
+          <span className="text-[16px] font-semibold leading-tight text-ink">{p.name}</span>
+        </div>
+        <span
+          className={`ml-auto inline-flex h-6 items-center whitespace-nowrap rounded-full px-2.5 text-[15px] font-semibold ${
+            p.ready ? 'bg-signal/15 text-signal' : 'border border-line text-ink-muted'
+          }`}
+        >
+          {p.ready ? C.readyTag : C.researchingTag}
+        </span>
+      </div>
+      <p className="mt-1 line-clamp-2 text-[15px] leading-[1.28]">
+        <span className="text-ink-muted">{C.fieldQuer}:</span> <span className="text-ink">{p.quer}</span>
+        <span className="text-ink-muted"> · {C.fieldQuando}:</span> <span className="text-ink">{p.quando}</span>
+        <span className="text-ink-muted"> · {extraLabel}:</span> <span className="text-ink">{p.extra}</span>
+      </p>
+      {p.ready && (
+        <p className="mt-1.5 flex gap-1.5 text-[15px] leading-[1.28] text-ink/85">
+          <Eye className="mt-[2px] h-4 w-4 shrink-0 text-signal" strokeWidth={2} aria-hidden="true" />
+          <span>{C.seenBeforeFooter} {seenBefore.join(' · ')}</span>
+        </p>
+      )}
     </motion.button>
   )
 }

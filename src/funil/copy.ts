@@ -126,6 +126,18 @@ export const INBOX = {
   scorePerMonth: 'Números por mês, projeção conservadora.',
   scoreHonest: 'Você já converte acima da média: o ganho é escalar sem perder qualidade.',
   seenBeforeLabel: 'Antes de chamar, viu:',
+  seenBeforeFooter: 'Viu antes de chamar:',
+  /** mini placar da simulação: "{n} DE 8 PRONTAS PRA AGENDAR" */
+  miniReady: 'PRONTAS PRA AGENDAR',
+  /** bloco da caixa REAL (números do math.ts, com o ticket escolhido) */
+  realTitle: 'Na sua caixa real, por mês:',
+  realConv: 'VIRAM CONVERSA SÉRIA',
+  realRevenue: 'RECEITA A MAIS',
+  realSub: 'Projeção conservadora: metade do ganho observado no caso real.',
+  realHonest: 'SEU FUNIL JÁ CONVERTE ACIMA DA MÉDIA',
+  realHonestSub: 'Seu problema não é converter. É escalar sem perder qualidade.',
+  perMonth: '/mês',
+  anonConversation: (i: number) => `Conversa ${i}`,
   askVanish: 'E na sua caixa real? De cada 10, quantas somem assim?',
   askVanishHint: 'Toque nas que somem.',
   askVanishCount: (n: number) => [`${n} somem`, `${10 - n} viram conversa`] as const,

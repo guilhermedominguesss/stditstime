@@ -6,7 +6,8 @@ const Lab = lazy(() => import('./lab/Lab'))
 const Lab2 = lazy(() => import('./lab2/Lab2'))
 const Lab3 = lazy(() => import('./lab3/Lab3'))
 const Lab4 = lazy(() => import('./lab4/Lab4'))
-const ROUTES: Record<string, ReturnType<typeof lazy>> = { '/lab': Lab, '/lab2': Lab2, '/lab3': Lab3, '/lab4': Lab4 }
+const Lab5 = lazy(() => import('./lab5/Lab5'))
+const ROUTES: Record<string, ReturnType<typeof lazy>> = { '/lab': Lab, '/lab2': Lab2, '/lab3': Lab3, '/lab4': Lab4, '/lab5': Lab5 }
 
 const path = window.location.pathname.replace(/\/+$/, '')
 
@@ -25,6 +26,9 @@ function Placeholder() {
       </a>
       <a href="/lab4" className="font-mono text-sm uppercase tracking-telemetry text-ink underline underline-offset-4">
         /lab4 · base do app
+      </a>
+      <a href="/lab5" className="font-mono text-sm uppercase tracking-telemetry text-ink underline underline-offset-4">
+        /lab5 · simulação e caixa real
       </a>
     </main>
   )
