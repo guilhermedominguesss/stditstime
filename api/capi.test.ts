@@ -28,5 +28,14 @@ describe('CAPI', () => {
     expect(body.data[0].event_name).toBe('Lead')
     expect(body.data[0].custom_data.currency).toBe('BRL')
     expect(fetchFn.mock.calls[0][1].headers.Authorization).toBe('Bearer tok')
+    expect(body.test_event_code).toBeUndefined()
+  })
+
+  it('aceita o código de teste no pedido, só no formato TEST…', async () => {
+    const fetchFn = vi.fn().mockResolvedValue({ ok: true })
+    await sendLead({ event_name: 'Lead', event_id: 'FV-AB23', test_event_code: 'TEST34013' }, { env, fetchFn })
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body).test_event_code).toBe('TEST34013')
+    await sendLead({ event_name: 'Lead', event_id: 'FV-AB23', test_event_code: 'qualquer coisa' }, { env, fetchFn })
+    expect(JSON.parse(fetchFn.mock.calls[1][1].body).test_event_code).toBeUndefined()
   })
 })

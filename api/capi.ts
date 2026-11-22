@@ -23,7 +23,11 @@ const str = (v: unknown, max = 500) => (typeof v === 'string' && v ? v.slice(0, 
 const header = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
 export async function sendLead(body: Record<string, unknown>, ctx: { ip?: string; userAgent?: string; env: Env; fetchFn?: typeof fetch }) {
-  const { META_CAPI_TOKEN: token, META_TEST_EVENT_CODE: testCode, META_GRAPH_VERSION: version } = ctx.env
+  const { META_CAPI_TOKEN: token, META_TEST_EVENT_CODE: envTestCode, META_GRAPH_VERSION: version } = ctx.env
+  // Código da aba "Testar eventos": da variável de ambiente ou do próprio pedido (só no
+  // formato TEST…). Evento com código de teste NÃO conta como conversão real.
+  const bodyTestCode = typeof body.test_event_code === 'string' && /^TEST[A-Z0-9]{2,16}$/.test(body.test_event_code) ? body.test_event_code : undefined
+  const testCode = bodyTestCode || envTestCode
   // Pixel da It's Time por padrão: no servidor só o token é obrigatório
   const pixelId = ctx.env.META_PIXEL_ID || ctx.env.VITE_META_PIXEL_ID || '1914116903334296'
   if (!token || !pixelId) return { status: 200, json: { skipped: true } }
