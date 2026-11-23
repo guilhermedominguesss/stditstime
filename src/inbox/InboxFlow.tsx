@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { ArrowUp, User } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HIGHLIGHT_ANNUAL_BELOW, INBOX_BANK, LEADS_SHORTCUTS, TICKET_MIDPOINTS, type InboxNiche, type SegmentId, type TicketId } from '../funil/config'
@@ -7,9 +7,10 @@ import { diagnose, fmt, type Diagnosis } from '../funil/math'
 import { EASE_OUT_EXPO } from '../funil/tokens'
 import { Rolling } from '../funil/ui/Rolling'
 import {
-  ChatPain, ChatTriage, ConversationRow, CountUp, NichePicker, TOP, TOTAL,
+  ChatPain, ChatTriage, ConversationRow, CountUp, TOP, TOTAL,
   TriageCardCompact, TriageCardFull, rowVariants, seenFor, smoothScrollTo, vibrate, type PainStep,
 } from './parts'
+import { Intro, MARIANA_LAYOUT_ID, type IntroStage, type PaintCheck } from './Intro'
 
 /**
  * Caixa de Entrada Viva (cenas 0–7 do app): nicho → a caixa enche → a dor ensinada com 1
@@ -19,7 +20,7 @@ import {
  */
 
 export type InboxScene =
-  | 'nicho' | 'chegando' | 'responda' | 'chat' | 'sumindo' | 'familiar'
+  | 'intro' | 'nicho' | 'chegando' | 'responda' | 'chat' | 'sumindo' | 'familiar'
   | 'de_cada_10' | 'perguntas' | 'rebobina' | 'frase' | 'cards' | 'resultado'
 
 export interface InboxResult {
@@ -37,19 +38,28 @@ export type InboxEvent =
   | { type: 'std_on' }
   | { type: 'result'; result: InboxResult }
   | { type: 'open_card' }
+  /** a intro ficou pintada na tela (primeiro frame) */
+  | { type: 'intro_painted'; check: PaintCheck }
+  /** toque em "Quero ver quanto eu perco"; watchedMs = tempo na intro antes do toque */
+  | { type: 'intro_cta'; watchedMs: number }
 
 type Phase =
-  | 'niche' | 'arriving' | 'prompt' | 'chat' | 'ghosting' | 'dim' | 'question'
+  | 'intro' | 'introOut' | 'niche' | 'landing' | 'arriving' | 'prompt' | 'chat' | 'ghosting' | 'dim' | 'question'
   | 'askVanish' | 'askQuick' | 'rewind' | 'phrase' | 'cards' | 'done'
 
 const SCENE_OF: Record<Phase, InboxScene> = {
-  niche: 'nicho', arriving: 'chegando', prompt: 'responda', chat: 'chat', ghosting: 'sumindo',
+  intro: 'intro', introOut: 'intro', niche: 'nicho', landing: 'nicho', arriving: 'chegando', prompt: 'responda', chat: 'chat', ghosting: 'sumindo',
   dim: 'familiar', question: 'familiar', askVanish: 'de_cada_10', askQuick: 'perguntas',
   rewind: 'rebobina', phrase: 'frase', cards: 'cards', done: 'resultado',
 }
 
 const T = {
-  firstArrive: 300,
+  /** a Mariana pousa; a próxima conversa chega depois disso */
+  firstArrive: 900,
+  /** troca da mensagem da Mariana (intro → nicho) antes de ela virar a linha da caixa */
+  landing: 120,
+  /** a intro some em fade por baixo da caixa enquanto o card vira linha */
+  handoff: 450,
   arriveEvery: 450,
   promptDelay: 600,
   seen: 700,
@@ -76,7 +86,7 @@ const VARIANTS = rowVariants(T.rewindStagger)
 
 export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => void; onProof: () => void }) {
   const [segment, setSegment] = useState<SegmentId | null>(null)
-  const [phase, setPhase] = useState<Phase>('niche')
+  const [phase, setPhase] = useState<Phase>('intro')
   const [n, setN] = useState(0)
   const [ghosted, setGhosted] = useState<number[]>([])
   const [step, setStep] = useState<PainStep>('compose')
@@ -133,10 +143,21 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
 
   /* ---------------- fluxo ---------------- */
 
+  /** nicho escolhido: a mensagem da Mariana vira a do nicho e, em seguida, ela pousa na caixa */
   const start = (s: SegmentId) => {
+    if (phase !== 'niche') return
     vibrate(8)
     setSegment(s)
-    setN(0)
+    setPhase('landing')
+    emit.current?.({ type: 'start', segment: s })
+    later(() => begin(), T.landing)
+  }
+
+  const [handoff, setHandoff] = useState(false)
+  const begin = () => {
+    setHandoff(true)
+    later(() => setHandoff(false), T.handoff)
+    setN(1) // a Mariana já chegou (veio da intro)
     setGhosted([])
     setVanish([])
     setA10(null)
@@ -146,13 +167,12 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
     setExpanded([])
     setOpenCard(null)
     setPhase('arriving')
-    emit.current?.({ type: 'start', segment: s })
   }
 
   useEffect(() => {
     if (phase !== 'arriving') return
     if (n >= TOTAL) { later(() => setPhase('prompt'), T.promptDelay); return }
-    const id = window.setTimeout(() => setN((x) => x + 1), n === 0 ? T.firstArrive : T.arriveEvery)
+    const id = window.setTimeout(() => setN((x) => x + 1), n <= 1 ? T.firstArrive : T.arriveEvery)
     return () => clearTimeout(id)
   }, [phase, n, later])
 
@@ -248,12 +268,31 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
 
   /* ---------------- render ---------------- */
 
-  if (phase === 'niche' || !niche) return <NichePicker onPick={start} />
+  // intro → (toque) a Mariana sobe enquanto a pergunta de nicho entra → (nicho) a mensagem dela
+  // vira a do nicho → handoff: o card vira a 1ª linha da caixa e a intro some em fade por baixo
+  const introPhase = phase === 'intro' || phase === 'introOut' || phase === 'niche' || phase === 'landing'
+  const introStage: IntroStage = phase === 'intro' || phase === 'introOut' ? 'intro' : phase === 'niche' ? 'niche' : phase === 'landing' ? 'landing' : 'handoff'
+  const introEl = introPhase || handoff ? (
+    <Intro
+      stage={introStage}
+      landingMsg={niche ? niche.people[TOP].msg : null}
+      onPainted={(check) => emit.current?.({ type: 'intro_painted', check })}
+      onCta={(watchedMs) => {
+        if (phase !== 'intro') return
+        vibrate(12)
+        emit.current?.({ type: 'intro_cta', watchedMs })
+        setPhase('niche')
+      }}
+      onPick={start}
+    />
+  ) : null
+  if (introPhase || !niche) return <LayoutGroup id="inbox">{introEl}</LayoutGroup>
 
   const isBefore = ['arriving', 'prompt', 'chat', 'ghosting', 'dim', 'question', 'askVanish', 'askQuick'].includes(phase)
   const showList = isBefore || phase === 'rewind'
   const isAfter = phase === 'cards' || phase === 'done'
-  const rows = isBefore ? Array.from({ length: n }, (_, i) => n - 1 - i) : []
+  // a Mariana (TOP) chegou primeiro e fica fixada no topo; as outras entram logo abaixo dela
+  const rows = isBefore && n > 0 ? [TOP, ...Array.from({ length: n - 1 }, (_, i) => n - 2 - i)] : []
   const cards = isAfter ? cardOrder.slice(0, k) : []
   const firstReady = cardOrder[0]
   const readyArrived = cards.filter((i) => people[i].ready).length
@@ -261,9 +300,16 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
   const dimmed = phase === 'dim' || phase === 'question'
 
   return (
+    <LayoutGroup id="inbox">
+    {introEl}
     <div className="absolute inset-0 flex flex-col" onClick={skip}>
       {!isAfter && (
-        <header className="flex items-center justify-between px-5 pb-3" style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}>
+        <motion.header
+          className="flex items-center justify-between px-5 pb-3"
+          style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}
+          initial={{ y: -28, opacity: 0 }}
+          animate={{ y: 0, opacity: 1, transition: { duration: 0.45, ease: EASE_OUT_EXPO } }}
+        >
           <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-ink">{C.title}</h1>
           <AnimatePresence>
             {(phase === 'arriving' || phase === 'prompt') && n > 0 && (
@@ -279,7 +325,7 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
               </motion.span>
             )}
           </AnimatePresence>
-        </header>
+        </motion.header>
       )}
 
       {/* a dor, em número e em dinheiro (ticket médio do nicho: é simulação) */}
@@ -320,6 +366,14 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
                   pulsing={phase === 'prompt' && i === TOP}
                   ghost={ghosted.includes(i)}
                   onTap={i === TOP ? openChat : undefined}
+                  layoutId={i === TOP ? MARIANA_LAYOUT_ID : undefined}
+                  pinned={i === TOP}
+                  hint={phase === 'prompt' && i === TOP ? (
+                    <p className="flex items-center gap-2 border-b border-line/70 px-4 pb-3 pt-1 text-[18px] font-semibold text-ink">
+                      <ArrowUp className="h-5 w-5" aria-hidden="true" />
+                      {C.replyOne}
+                    </p>
+                  ) : undefined}
                 />
               ))}
             </AnimatePresence>
@@ -379,18 +433,6 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
 
       <div className="pb-safe px-4 pb-4 pt-2">
         <AnimatePresence mode="wait">
-          {phase === 'prompt' && (
-            <motion.p
-              key="reply"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT_EXPO } }}
-              exit={{ opacity: 0 }}
-              className="flex h-14 items-center justify-center gap-2 text-[20px] font-semibold text-ink"
-            >
-              <ArrowUp className="h-5 w-5" aria-hidden="true" />
-              {C.replyOne}
-            </motion.p>
-          )}
           {phase === 'done' && (
             <motion.button
               key="proof"
@@ -471,6 +513,7 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
         )}
       </AnimatePresence>
     </div>
+    </LayoutGroup>
   )
 }
 

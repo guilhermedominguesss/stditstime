@@ -1,5 +1,6 @@
 @import '@fontsource/inter-tight/latin-500.css';
 @import '@fontsource/inter-tight/latin-600.css';
+@import '@fontsource/inter-tight/latin-700.css';
 @import '@fontsource/jetbrains-mono/latin-400.css';
 @import '@fontsource/jetbrains-mono/latin-500.css';
 @import '@fontsource/instrument-serif/latin-400-italic.css';
@@ -34,3 +35,20 @@ body {
 }
 
 :focus-visible { outline: 2px solid #C6FF3D; outline-offset: 2px; }
+
+/* grão de filme da intro: textura estática deslocada por transform (barato, sem filtro por frame) */
+@keyframes fv-grain {
+  0% { transform: translate(0, 0); }
+  12.5% { transform: translate(-38px, 22px); }
+  25% { transform: translate(24px, -46px); }
+  37.5% { transform: translate(-60px, -18px); }
+  50% { transform: translate(44px, 36px); }
+  62.5% { transform: translate(-14px, 58px); }
+  75% { transform: translate(64px, -8px); }
+  87.5% { transform: translate(-48px, -52px); }
+  100% { transform: translate(0, 0); }
+}
+.fv-grain { animation: fv-grain 0.9s steps(1) infinite; will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .fv-grain { animation: none; }
+}

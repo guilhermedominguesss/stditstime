@@ -114,7 +114,7 @@ export const INBOX = {
   lastSeen: (hora: string) => `visto por último às ${hora}`,
   question: 'Isso te parece familiar?',
   cta: 'Ver o mesmo anúncio com filtro',
-  ctaSub: 'STD: uma etapa antes do WhatsApp que conhece a pessoa',
+  ctaSub: 'STD: um filtro antes do WhatsApp que conhece a pessoa',
   readyTag: 'pronta pra agendar',
   researchingTag: 'ainda pesquisando',
   fieldQuer: 'Quer',
@@ -174,7 +174,7 @@ export const PROVA = {
   label: 'CASO REAL · ÚLTIMOS 30 DIAS',
   bars: { leads: 'LEADS', appointments: 'AGENDAMENTOS', closes: 'FECHAMENTOS' },
   chips: { qualified: 'RESPOSTAS QUALIFICADAS', abandon: 'DE ABANDONO', leadToClient: 'DE LEAD A CLIENTE' },
-  fine: 'Resultado do funil completo: tráfego + STD + comercial da clínica.',
+  fine: 'Resultado do funil completo: tráfego + STD (um filtro antes do WhatsApp) + comercial da clínica.',
   openStd: 'Ver o STD da Thais por dentro',
   backToFunnel: 'Voltar ao meu funil',
   openNewTab: 'Abrir em nova aba',
@@ -214,8 +214,29 @@ export const SAIDA_QUALIFICADO = {
 } as const
 
 export const SAIDA_NAO_QUALIFICADO = {
-  title: 'Seu funil ainda não precisa de um STD.',
+  title: 'Seu funil ainda não precisa de um STD, um filtro antes do WhatsApp.',
   subtitle: 'Precisa disso primeiro. Os 7 vazamentos mais comuns:',
   footer: 'Quando o seu volume crescer, refaça o Funil Vivo.',
   restart: 'Refazer agora',
+} as const
+
+/* ------------------------------------------------------------------ */
+/* Cena "intro" (antes da pergunta de nicho)                           */
+/* A intro é a continuação do anúncio: proibido "STD", "raio-x",       */
+/* "diagnóstico", "simulação", "teste", números do caso real e textos  */
+/* sobre acesso ao WhatsApp (testado em copy.test.ts).                 */
+/* ------------------------------------------------------------------ */
+
+export const INTRO = {
+  /** 3 linhas fixas (sem "do" órfão): 2 em Inter Tight 600 + 1 em Instrument Serif itálico, maior. Sem verde. */
+  headline: ['Quanto está', 'escapando do', 'seu WhatsApp?'] as const,
+  support: '1 minuto. Sem formulário, só toques na tela.',
+  cta: 'Quero ver quanto eu perco',
+  /** a notificação protagonista (sem logo, sem interface de app); mesmo nome na caixa */
+  name: 'Mariana Costa',
+  initials: 'MC',
+  when: 'agora',
+  msg: 'oi, quanto custa?',
+  /** depois do toque, abaixo da Mariana: Inter Tight 600 + Instrument Serif itálico, maior */
+  nicheTitle: ['A Mariana chamou.', 'Qual é o seu negócio?'] as const,
 } as const

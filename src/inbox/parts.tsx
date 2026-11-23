@@ -1,8 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion, type Variants } from 'framer-motion'
 import {
   Briefcase, CheckCheck, ChevronLeft, CircleEllipsis, Eye, GraduationCap, Smile, Sparkles,
-  Stethoscope, Store, UtensilsCrossed, type LucideIcon,
-} from 'lucide-react'
+  Stethoscope, Store, UtensilsCrossed, type LucideIcon, Pin } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CASE_REF, type InboxPerson, type SegmentId } from '../funil/config'
 import { INBOX as C } from '../funil/copy'
@@ -16,7 +15,8 @@ import { AVATAR_TONES, EASE_OUT_EXPO } from '../funil/tokens'
 
 export const TOTAL = 8
 export const TOP = TOTAL - 1
-export const time = (i: number) => `09:${String(12 + i * 4).padStart(2, '0')}`
+/** a Mariana (TOP) chegou primeiro, ainda na intro: 09:08; as outras chegam depois */
+export const time = (i: number) => (i === TOP ? '09:08' : `09:${String(12 + i * 4).padStart(2, '0')}`)
 export const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 export const firstName = (name: string) => name.split(' ')[0]
 
@@ -52,7 +52,7 @@ export function CountUp({ value, ms = 600, format = fmt }: { value: number; ms?:
 
 /* ---------------- nicho ---------------- */
 
-const SEGMENT_ICONS: Record<SegmentId, LucideIcon> = {
+export const SEGMENT_ICONS: Record<SegmentId, LucideIcon> = {
   clinica: Stethoscope, estetica: Sparkles, odonto: Smile, educacao: GraduationCap,
   servicos: Briefcase, varejo: Store, alimentacao: UtensilsCrossed, outro: CircleEllipsis,
 }
@@ -95,7 +95,8 @@ export function NichePicker({ onPick }: { onPick: (s: SegmentId) => void }) {
 /* ---------------- avatar e linha de conversa ---------------- */
 
 export function Avatar({ name, idx, size, dim = false }: { name: string; idx: number; size: number; dim?: boolean }) {
-  const tone = AVATAR_TONES[idx % AVATAR_TONES.length]
+  // a Mariana (TOP) mantém o tom quente da intro
+  const tone = AVATAR_TONES[idx === TOP ? 5 : idx % AVATAR_TONES.length]
   return (
     <div
       className="flex shrink-0 items-center justify-center rounded-full font-semibold transition-opacity"
@@ -114,24 +115,44 @@ export const rowVariants = (stagger: number): Variants => ({
   exit: (i: number) => ({ opacity: 0, y: -70, transition: { duration: 0.24, delay: i * (stagger / 1000), ease: [0.4, 0, 1, 1] } }),
 })
 
-export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap }: {
+export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap, layoutId, pinned = false, hint }: {
   p: InboxPerson; idx: number; index: number; variants: Variants; pulsing: boolean; ghost: boolean; onTap?: () => void
+  /** a Mariana pousa vindo da intro (mesmo layoutId da notificação) */
+  layoutId?: string
+  /** fixada no topo (ícone de alfinete): as outras chegam abaixo dela */
+  pinned?: boolean
+  /** dica presa logo abaixo da linha (ex.: "Responda uma.") */
+  hint?: ReactNode
 }) {
   return (
-    <motion.li layout="position" custom={index} variants={variants} initial="initial" animate="enter" exit="exit" className="relative">
+    <motion.li
+      // a Mariana: o MESMO card da intro se move e encolhe até a linha (450ms, expo out)
+      layout={layoutId ? true : 'position'}
+      layoutId={layoutId}
+      transition={layoutId ? { layout: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } } : undefined}
+      custom={index}
+      variants={variants}
+      initial="initial"
+      animate="enter"
+      exit="exit"
+      className="relative"
+    >
       <motion.div
         role={onTap ? 'button' : undefined}
         tabIndex={onTap ? 0 : undefined}
         onClick={onTap ? (e) => { e.stopPropagation(); onTap() } : undefined}
         onKeyDown={onTap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap() } } : undefined}
         className="relative flex w-full gap-3 border-b border-line/70 px-4 py-3 text-left"
-        animate={{ backgroundColor: ghost ? 'rgba(14,16,19,0.6)' : 'rgba(14,16,19,0)' }}
+        // pouso: o material da notificação (cinza, cantos 22) vira linha durante o morph
+        initial={layoutId ? { backgroundColor: 'rgba(56,56,62,0.82)', borderRadius: 22 } : false}
+        animate={{ backgroundColor: ghost ? 'rgba(14,16,19,0.6)' : 'rgba(14,16,19,0)', borderRadius: 0, transition: { duration: layoutId ? 0.45 : 0.3, ease: [0.16, 1, 0.3, 1] } }}
       >
         {pulsing && (
           <motion.span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-1 rounded-2xl ring-2 ring-ink"
-            animate={{ opacity: [0.7, 0.15, 0.7] }}
+            className="pointer-events-none absolute inset-1 rounded-2xl"
+            style={{ background: 'rgba(198,255,61,0.05)', boxShadow: '0 0 22px 2px rgba(198,255,61,0.22), inset 0 0 0 1px rgba(198,255,61,0.18)' }}
+            animate={{ opacity: [0.35, 1, 0.35] }}
             transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
@@ -139,7 +160,10 @@ export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
             <span className={`truncate text-[16px] font-semibold ${ghost ? 'text-ink-muted' : 'text-ink'}`}>{p.name}</span>
-            <span className="shrink-0 text-[15px] text-ink-muted">{time(idx)}</span>
+            <span className="flex shrink-0 items-center gap-1 text-[15px] text-ink-muted">
+              {pinned && <Pin className="h-3.5 w-3.5 rotate-45" strokeWidth={2} aria-label="fixada" />}
+              {time(idx)}
+            </span>
           </div>
           <div className="mt-0.5 flex items-center justify-between gap-3">
             <p className={`truncate text-[15px] ${ghost ? 'text-ink-muted' : 'font-medium text-ink'}`}>{p.msg}</p>
@@ -158,6 +182,19 @@ export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap
           </AnimatePresence>
         </div>
       </motion.div>
+      <AnimatePresence>
+        {hint && (
+          <motion.div
+            key="hint"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto', transition: { duration: 0.4, ease: EASE_OUT_EXPO } }}
+            exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+            className="overflow-hidden"
+          >
+            {hint}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.li>
   )
 }
@@ -441,7 +478,7 @@ export function ChatPain({ p, idx, reply, step, onSend, onFastForward }: {
                 whileTap={{ scale: 0.95 }}
                 animate={{ scale: [1, 1.04, 1] }}
                 transition={{ duration: 1.6, repeat: Infinity }}
-                className="h-12 shrink-0 rounded-2xl bg-ink px-5 text-[16px] font-semibold text-bg"
+                className="h-12 shrink-0 rounded-2xl bg-signal px-5 text-[16px] font-semibold text-bg"
               >
                 {C.send}
               </motion.button>
@@ -516,7 +553,9 @@ function Bubble({ time: t, children }: { time: string; children: ReactNode }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0, transition: { duration: 0.35, delay: 0.3 } }}
-      className="max-w-[80%] self-start rounded-2xl rounded-bl-md bg-bg-raised px-3.5 py-2.5 text-[16px] leading-snug text-ink"
+      // bg-raised puro (#0E1013) some no fundo do chat: um degrau mais claro, como num app real
+      className="max-w-[80%] self-start rounded-2xl rounded-bl-md border border-line px-3.5 py-2.5 text-[16px] leading-snug text-ink"
+      style={{ background: '#1A1D22' }}
     >
       {children}
       <span className="ml-2 align-bottom text-[15px] text-ink-muted">{t}</span>
