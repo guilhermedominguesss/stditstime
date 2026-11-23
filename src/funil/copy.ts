@@ -228,18 +228,16 @@ export const SAIDA_NAO_QUALIFICADO = {
 /* ------------------------------------------------------------------ */
 
 export const INTRO = {
-  counter: (respondidas: number, sumiram: number) => [`RESPONDIDAS ${respondidas}`, `SUMIRAM ${sumiram}`] as const,
-  /** a parte entre colchetes ganha destaque em signal */
-  headline: ['Quanto está escapando do ', 'seu WhatsApp', '?'] as const,
+  /** 3 linhas fixas (sem "do" órfão): 2 em Inter Tight 600 + 1 em Instrument Serif itálico, maior. Sem verde. */
+  headline: ['Quanto está', 'escapando do', 'seu WhatsApp?'] as const,
   support: '1 minuto. Sem formulário: você responde tocando na tela.',
   cta: 'Quero ver quanto eu perco',
-  /** mensagens neutras (qualquer nicho) de quem chega */
-  incoming: ['oi, quanto custa?', 'valor?', '?', 'qual o preço?', 'oi, quanto fica?'] as const,
-  reply: 'Oi! Fica R$ 390.',
-  you: 'Você:',
-  seen: 'Visualizada',
-  typing: 'digitando…',
-  stamp: 'SUMIU',
-  answered: 'respondeu',
-  names: ['Ana', 'Bruno', 'Carla', 'Diego', 'Fernanda', 'Gustavo', 'Juliana', 'Lucas', 'Marina', 'Rafael', 'Patrícia', 'Thiago'] as const,
+  /** a notificação protagonista (sem logo, sem interface de app) */
+  name: 'Mariana',
+  when: 'agora',
+  msg: 'oi, quanto custa?',
+  /** camadas de profundidade atrás dela (não é lista) */
+  depth: ['valor?', '?'] as const,
+  /** depois do toque, abaixo da Mariana, na mesma cena */
+  nicheTitle: 'Começa pelo seu negócio:',
 } as const

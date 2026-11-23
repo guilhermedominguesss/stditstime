@@ -1,8 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion, type Variants } from 'framer-motion'
 import {
   Briefcase, CheckCheck, ChevronLeft, CircleEllipsis, Eye, GraduationCap, Smile, Sparkles,
-  Stethoscope, Store, UtensilsCrossed, type LucideIcon,
-} from 'lucide-react'
+  Stethoscope, Store, UtensilsCrossed, type LucideIcon, Pin } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CASE_REF, type InboxPerson, type SegmentId } from '../funil/config'
 import { INBOX as C } from '../funil/copy'
@@ -16,7 +15,8 @@ import { AVATAR_TONES, EASE_OUT_EXPO } from '../funil/tokens'
 
 export const TOTAL = 8
 export const TOP = TOTAL - 1
-export const time = (i: number) => `09:${String(12 + i * 4).padStart(2, '0')}`
+/** a Mariana (TOP) chegou primeiro, ainda na intro: 09:08; as outras chegam depois */
+export const time = (i: number) => (i === TOP ? '09:08' : `09:${String(12 + i * 4).padStart(2, '0')}`)
 export const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 export const firstName = (name: string) => name.split(' ')[0]
 
@@ -52,7 +52,7 @@ export function CountUp({ value, ms = 600, format = fmt }: { value: number; ms?:
 
 /* ---------------- nicho ---------------- */
 
-const SEGMENT_ICONS: Record<SegmentId, LucideIcon> = {
+export const SEGMENT_ICONS: Record<SegmentId, LucideIcon> = {
   clinica: Stethoscope, estetica: Sparkles, odonto: Smile, educacao: GraduationCap,
   servicos: Briefcase, varejo: Store, alimentacao: UtensilsCrossed, outro: CircleEllipsis,
 }
@@ -95,14 +95,16 @@ export function NichePicker({ onPick }: { onPick: (s: SegmentId) => void }) {
 /* ---------------- avatar e linha de conversa ---------------- */
 
 export function Avatar({ name, idx, size, dim = false }: { name: string; idx: number; size: number; dim?: boolean }) {
-  const tone = AVATAR_TONES[idx % AVATAR_TONES.length]
+  // a Mariana (TOP) mantém o tom quente da intro
+  const tone = AVATAR_TONES[idx === TOP ? 5 : idx % AVATAR_TONES.length]
   return (
     <div
       className="flex shrink-0 items-center justify-center rounded-full font-semibold transition-opacity"
       style={{ width: size, height: size, background: tone.bg, color: tone.fg, fontSize: size * 0.36, opacity: dim ? 0.45 : 1 }}
       aria-hidden="true"
     >
-      {initials(name)}
+      {/* a Mariana mantém o "M" da notificação da intro */}
+      {idx === TOP ? name[0] : initials(name)}
     </div>
   )
 }
@@ -114,18 +116,34 @@ export const rowVariants = (stagger: number): Variants => ({
   exit: (i: number) => ({ opacity: 0, y: -70, transition: { duration: 0.24, delay: i * (stagger / 1000), ease: [0.4, 0, 1, 1] } }),
 })
 
-export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap }: {
+export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap, layoutId, pinned = false }: {
   p: InboxPerson; idx: number; index: number; variants: Variants; pulsing: boolean; ghost: boolean; onTap?: () => void
+  /** a Mariana pousa vindo da intro (mesmo layoutId da notificação) */
+  layoutId?: string
+  /** fixada no topo (ícone de alfinete): as outras chegam abaixo dela */
+  pinned?: boolean
 }) {
   return (
-    <motion.li layout="position" custom={index} variants={variants} initial="initial" animate="enter" exit="exit" className="relative">
+    <motion.li
+      layout="position"
+      layoutId={layoutId}
+      transition={layoutId ? { layout: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } } : undefined}
+      custom={index}
+      variants={variants}
+      initial="initial"
+      animate="enter"
+      exit="exit"
+      className="relative"
+    >
       <motion.div
         role={onTap ? 'button' : undefined}
         tabIndex={onTap ? 0 : undefined}
         onClick={onTap ? (e) => { e.stopPropagation(); onTap() } : undefined}
         onKeyDown={onTap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap() } } : undefined}
         className="relative flex w-full gap-3 border-b border-line/70 px-4 py-3 text-left"
-        animate={{ backgroundColor: ghost ? 'rgba(14,16,19,0.6)' : 'rgba(14,16,19,0)' }}
+        // pouso: o cinza da notificação se dissolve no fundo da lista
+        initial={layoutId ? { backgroundColor: 'rgba(58,58,63,0.75)' } : false}
+        animate={{ backgroundColor: ghost ? 'rgba(14,16,19,0.6)' : 'rgba(14,16,19,0)', transition: { duration: layoutId ? 0.9 : 0.3, delay: layoutId ? 0.35 : 0 } }}
       >
         {pulsing && (
           <motion.span
@@ -139,7 +157,10 @@ export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
             <span className={`truncate text-[16px] font-semibold ${ghost ? 'text-ink-muted' : 'text-ink'}`}>{p.name}</span>
-            <span className="shrink-0 text-[15px] text-ink-muted">{time(idx)}</span>
+            <span className="flex shrink-0 items-center gap-1 text-[15px] text-ink-muted">
+              {pinned && <Pin className="h-3.5 w-3.5 rotate-45" strokeWidth={2} aria-label="fixada" />}
+              {time(idx)}
+            </span>
           </div>
           <div className="mt-0.5 flex items-center justify-between gap-3">
             <p className={`truncate text-[15px] ${ghost ? 'text-ink-muted' : 'font-medium text-ink'}`}>{p.msg}</p>

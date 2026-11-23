@@ -1,45 +1,43 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, CheckCheck } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { INTRO as C } from '../funil/copy'
-import { EASE_OUT_EXPO, SPRING_TOUCH } from '../funil/tokens'
-import { Avatar } from './parts'
+import type { SegmentId } from '../funil/config'
+import { INBOX, INTRO as C } from '../funil/copy'
+import { AVATAR_TONES } from '../funil/tokens'
+import { SEGMENT_ICONS, SEGMENT_ORDER } from './parts'
 
 /**
- * Cena "intro": a continuação do anúncio. Um só objetivo: o toque em
- * "Quero ver quanto eu perco →". Tudo pronto e tocável no PRIMEIRO frame; só a caixa
- * de entrada se mexe. A perda ACUMULA (não é loop da mesma conversa).
- * Ao tocar: textos saem em fade (150ms) e a caixa cresce até ocupar a tela (500ms).
+ * Cena "intro": o celular acende no escuro.
+ *
+ * Uma notificação só (a Mariana, "oi, quanto custa?") é a protagonista. Atrás dela, em
+ * profundidade, "valor?" e "?". Depois, silêncio: só o push-in da cena e a Mariana
+ * flutuando. Texto e botão prontos no PRIMEIRO frame.
+ *
+ * Depois do toque a Mariana NÃO some: sobe, fixa no topo e a pergunta de nicho aparece
+ * embaixo dela, na mesma cena. Escolhido o nicho, a mensagem dela vira a do nicho e ela
+ * pousa como a primeira conversa da caixa de entrada (layoutId "mariana").
+ *
+ * Desempenho: só transform/opacity animam em loop. O blur das camadas de profundidade é
+ * fixo (rasterizado uma vez); o grão é uma textura estática deslocada por transform.
  */
 
-type Status = 'new' | 'sent' | 'seen' | 'typing' | 'gone' | 'answered'
-interface Convo { id: number; name: string; tone: number; msg: string; status: Status }
+export type IntroStage = 'intro' | 'leaving' | 'niche' | 'landing'
 
-/** passos do ciclo (ms desde a chegada da conversa) */
-const STEP = { sent: 450, seen: 950, typing: 1300, end: 1800, cycle: 2400 } as const
-/** a cada N ciclos, uma conversa NÃO some (fica "respondeu") */
-const ANSWER_EVERY = 4
-/** azul do "lido" (só neste detalhe de ilustração) */
-const READ_BLUE = '#4FB6EC'
+/** tom quente do avatar da Mariana (terracota) */
+export const MARIANA_TONE = AVATAR_TONES[5]
+export const MARIANA_LAYOUT_ID = 'mariana'
 
-const nameOf = (i: number) => C.names[i % C.names.length]
-const msgOf = (i: number) => C.incoming[i % C.incoming.length]
+/** abaixo disso: some a profundidade e a notificação encolhe (a Mariana e o botão nunca saem) */
+const COMPACT_BELOW = 620
 
-/** primeiro frame já preenchido: 3 conversas, uma carimbada; RESPONDIDAS 3 · SUMIRAM 1 */
-const INITIAL: Convo[] = [
-  { id: 2, name: nameOf(2), tone: 2, msg: msgOf(2), status: 'seen' },
-  { id: 1, name: nameOf(1), tone: 1, msg: msgOf(1), status: 'seen' },
-  { id: 0, name: nameOf(0), tone: 0, msg: msgOf(0), status: 'gone' },
-]
-
-function useRowsVisible() {
+function useCompact() {
   const read = () => {
-    const h = typeof window === 'undefined' ? 800 : window.visualViewport?.height ?? window.innerHeight
-    return h < 620 ? 3 : 4
+    if (typeof window === 'undefined') return false
+    return (window.visualViewport?.height ?? window.innerHeight) < COMPACT_BELOW
   }
-  const [n, setN] = useState(read)
+  const [compact, setCompact] = useState(read)
   useEffect(() => {
-    const on = () => setN(read())
+    const on = () => setCompact(read())
     window.visualViewport?.addEventListener('resize', on)
     window.addEventListener('resize', on)
     return () => {
@@ -47,193 +45,230 @@ function useRowsVisible() {
       window.removeEventListener('resize', on)
     }
   }, [])
-  return n
+  return compact
 }
 
-export function Intro({ onCta, onPainted, leaving }: {
-  /** toque no botão; cyclesSeen = quantos ciclos completos a pessoa viu */
-  onCta: (cyclesSeen: number) => void
+/** grão de filme: ruído estático (SVG feTurbulence), gerado uma vez */
+const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
+)}")`
+
+/** material da notificação: cinza translúcido, fio de luz no topo, sombra funda e macia */
+const MATERIAL = {
+  background: 'linear-gradient(180deg, rgba(70,70,76,0.80) 0%, rgba(44,44,49,0.82) 100%)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 32px 64px -20px rgba(0,0,0,0.9), 0 12px 28px -10px rgba(0,0,0,0.65)',
+} as const
+
+const PUSH = { duration: 8, ease: 'easeInOut', repeat: Infinity, repeatType: 'mirror' } as const
+
+export function Intro({ stage, landingMsg, onCta, onPick, onPainted }: {
+  stage: IntroStage
+  /** mensagem do nicho escolhido (a da Mariana no banco), para o morph */
+  landingMsg: string | null
+  /** toque no botão; watchedMs = quanto tempo a intro ficou na tela antes do toque */
+  onCta: (watchedMs: number) => void
+  onPick: (s: SegmentId) => void
   /** a intro está pintada na tela (primeiro frame) */
   onPainted: () => void
-  /** transição de saída em andamento */
-  leaving: boolean
 }) {
-  const [convos, setConvos] = useState<Convo[]>(INITIAL)
-  const [respondidas, setRespondidas] = useState(3)
-  const [sumiram, setSumiram] = useState(1)
-  const cycles = useRef(0)
-  const nextId = useRef(3)
-  const rows = useRowsVisible()
+  const reduced = useReducedMotion() ?? false
+  const compact = useCompact()
+  const mountedAt = useRef(0)
+  const isIntro = stage === 'intro' || stage === 'leaving'
+  const alive = stage === 'intro' // push-in, flutuação e profundidade só antes do toque
 
   useEffect(() => {
+    mountedAt.current = performance.now()
     const raf = requestAnimationFrame(() => onPainted())
     return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // o ciclo: chega → resposta enviada → visualizada → digitando… → SUMIU (ou respondeu)
-  useEffect(() => {
-    if (leaving) return
-    const timers: number[] = []
-    const set = (id: number, status: Status) => setConvos((list) => list.map((c) => (c.id === id ? { ...c, status } : c)))
-    const runCycle = () => {
-      const id = nextId.current++
-      const answered = (cycles.current + 1) % ANSWER_EVERY === 0
-      const fresh: Convo = { id, name: nameOf(id), tone: id % 6, msg: msgOf(id), status: 'new' }
-      setConvos((list) => [fresh, ...list].slice(0, 6))
-      timers.push(window.setTimeout(() => set(id, 'sent'), STEP.sent))
-      timers.push(window.setTimeout(() => set(id, 'seen'), STEP.seen))
-      timers.push(window.setTimeout(() => set(id, answered ? 'seen' : 'typing'), STEP.typing))
-      timers.push(window.setTimeout(() => {
-        set(id, answered ? 'answered' : 'gone')
-        setRespondidas((n) => n + 1)
-        if (!answered) setSumiram((n) => n + 1)
-        cycles.current++
-      }, STEP.end))
-    }
-    const first = window.setTimeout(function loop() {
-      runCycle()
-      timers.push(window.setTimeout(loop, STEP.cycle))
-    }, 900)
-    timers.push(first)
-    return () => timers.forEach(clearTimeout)
-  }, [leaving])
-
-  const fade = { opacity: leaving ? 0 : 1, transition: { duration: 0.15 } }
-
   return (
-    <div
-      className="absolute inset-0 flex flex-col px-5"
-      style={{ paddingTop: 'max(14px, env(safe-area-inset-top))', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
-    >
-      {/* a) contador */}
-      <motion.p animate={fade} className="font-mono text-[13px] font-medium tabular tracking-[0.04em] text-ink-muted" aria-live="off">
-        <Num value={respondidas} prefix="RESPONDIDAS " /> · <span className="text-leak"><Num value={sumiram} prefix="SUMIRAM " /></span>
-      </motion.p>
-
-      {/* b) headline */}
-      <motion.h1
-        animate={fade}
-        className="mt-2.5 font-bold leading-[1.05] tracking-[-0.02em] text-ink"
-        style={{ fontSize: 'clamp(34px, min(10vw, 6.4vh), 40px)' }}
-      >
-        {C.headline[0]}
-        <span className="text-signal underline decoration-signal/60 decoration-[3px] underline-offset-[6px]">{C.headline[1]}</span>
-        {C.headline[2]}
-      </motion.h1>
-
-      {/* c) apoio */}
-      <motion.p animate={fade} className="mt-2 text-[16px] leading-snug text-ink/80">{C.support}</motion.p>
-
-      {/* d) caixa de entrada animada (protagonista) */}
-      {/* ao sair, o "relative" some: a caixa passa a ocupar a tela inteira da intro */}
-      <div className={`mt-3.5 min-h-[220px] flex-1 ${leaving ? '' : 'relative'}`}>
-        <motion.div
-          layout
-          transition={{ layout: { duration: 0.5, ease: EASE_OUT_EXPO } }}
-          className={`absolute inset-0 overflow-hidden border border-line bg-bg-raised ${leaving ? 'z-20 rounded-none border-0' : 'rounded-[20px]'}`}
-          aria-hidden="true"
-        >
-          <ul className="flex flex-col">
-            <AnimatePresence initial={false} mode="popLayout">
-              {convos.slice(0, rows).map((c) => <Row key={c.id} c={c} />)}
-            </AnimatePresence>
-          </ul>
-        </motion.div>
+    <div className="absolute inset-0 overflow-hidden" style={{ background: '#07080A' }}>
+      {/* vinheta + grão (fixos na tela) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(120% 85% at 50% 38%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.72) 100%)' }}
+      />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden" style={{ opacity: 0.035 }}>
+        <div className={`absolute ${reduced ? '' : 'fv-grain'}`} style={{ inset: '-120px', backgroundImage: GRAIN, backgroundSize: '180px 180px' }} />
       </div>
 
-      {/* e) botão */}
-      <motion.button
-        type="button"
-        onClick={() => onCta(cycles.current)}
-        animate={fade}
-        whileTap={{ scale: 0.97 }}
-        className="mt-3.5 flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-signal text-[17px] font-semibold text-bg"
+      <div
+        className="relative z-10 flex h-full flex-col px-5"
+        style={{ paddingTop: 'max(14px, env(safe-area-inset-top))', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
       >
-        {C.cta}
-        <motion.span
-          aria-hidden="true"
-          animate={{ x: [0, 4, 0] }}
-          transition={{ duration: 0.45, repeat: Infinity, repeatDelay: 1.15, ease: 'easeInOut' }}
-          className="inline-flex"
-        >
-          <ArrowRight className="h-5 w-5" strokeWidth={2.5} />
-        </motion.span>
-      </motion.button>
+        {/* palco: no começo ocupa o espaço livre e centraliza a Mariana; depois do toque, ela sobe */}
+        <div className={isIntro ? 'relative flex min-h-0 flex-1 items-center' : 'relative pt-2'}>
+          <div className="relative w-full">
+            {/* luz quente atrás da notificação (pulsa na chegada) */}
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-1/2"
+              style={{
+                width: '150%', height: 340, x: '-50%', y: '-50%',
+                background: 'radial-gradient(closest-side, rgba(255,170,115,0.22), rgba(255,140,95,0.08) 55%, rgba(255,140,95,0) 100%)',
+              }}
+              initial={reduced ? false : { opacity: 0.5, scale: 1 }}
+              animate={
+                stage === 'landing' ? { opacity: 0, transition: { duration: 0.4 } }
+                  : reduced || !alive ? { opacity: 0.8, scale: 1 }
+                    : { opacity: [0.5, 1, 0.8], scale: [1, 1.03], transition: { opacity: { duration: 1, times: [0, 0.45, 1], delay: 0.2 }, scale: PUSH } }
+              }
+            />
+
+            {/* profundidade: não é lista, são camadas atrás (menores e desfocadas) */}
+            {!compact && (
+              <>
+                <DepthLayer text={C.depth[1]} tone={1} depth={2} at={2.6} show={alive} reduced={reduced} />
+                <DepthLayer text={C.depth[0]} tone={2} depth={1} at={1.6} show={alive} reduced={reduced} />
+              </>
+            )}
+
+            {/* a protagonista: layout aqui fora; chegada, push-in e flutuação nos filhos */}
+            <motion.div layoutId={MARIANA_LAYOUT_ID} layout="position" transition={{ layout: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } }} className="relative">
+              <motion.div
+                initial={reduced ? false : { y: -110, opacity: 0, scaleY: 1.14, filter: 'blur(12px)' }}
+                animate={{ y: 0, opacity: 1, scaleY: 1, filter: 'blur(0px)' }}
+                transition={{ delay: 0.2, duration: 0.5, ease: [0.2, 0.9, 0.25, 1] }}
+              >
+                <motion.div
+                  animate={reduced || !alive ? { y: 0, scale: 1 } : { y: [0, -3, 0, 3, 0], scale: [1, 1.03] }}
+                  transition={reduced || !alive ? { duration: 0.3 } : { y: { duration: 5, ease: 'easeInOut', repeat: Infinity, delay: 0.7 }, scale: PUSH }}
+                  style={{ willChange: 'transform' }}
+                >
+                  <Notification msg={stage === 'landing' && landingMsg ? landingMsg : C.msg} compact={compact} reduced={reduced} />
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* texto + botão (prontos no primeiro frame) / pergunta de nicho, na mesma cena */}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {isIntro ? (
+            <motion.div
+              key="pitch"
+              className="shrink-0"
+              animate={{ opacity: stage === 'leaving' ? 0 : 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h1 className="text-ink">
+                <span className="block font-semibold leading-[1.06] tracking-[-0.02em]" style={{ fontSize: 'clamp(32px, min(9.6vw, 5.8vh), 38px)' }}>
+                  {C.headline[0]}<br />{C.headline[1]}
+                </span>
+                <span className="block font-serif italic leading-[1.02]" style={{ fontSize: 'clamp(38px, min(11.4vw, 6.9vh), 46px)' }}>
+                  {C.headline[2]}
+                </span>
+              </h1>
+              <p className="mt-2.5 text-[15px] leading-snug" style={{ color: 'rgba(242,241,236,0.7)' }}>{C.support}</p>
+              <motion.button
+                type="button"
+                disabled={stage !== 'intro'}
+                onClick={(e) => { e.stopPropagation(); onCta(Math.round(performance.now() - mountedAt.current)) }}
+                whileTap={{ scale: 0.97 }}
+                className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-signal text-[17px] font-semibold text-bg"
+              >
+                {C.cta}
+                <ArrowRight className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+              </motion.button>
+            </motion.div>
+          ) : (
+            <motion.section
+              key="niche"
+              className="mt-6 flex min-h-0 flex-1 flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: stage === 'landing' ? 0 : 1, transition: { duration: stage === 'landing' ? 0.2 : 0.3, delay: stage === 'landing' ? 0 : 0.3 } }}
+            >
+              <h2 className="text-[22px] font-semibold leading-tight tracking-[-0.01em] text-ink">{C.nicheTitle}</h2>
+              <div className="mt-3.5 grid grid-cols-2 gap-2">
+                {SEGMENT_ORDER.map((s, i) => {
+                  const Icon = SEGMENT_ICONS[s]
+                  return (
+                    <motion.button
+                      key={s}
+                      type="button"
+                      disabled={stage !== 'niche'}
+                      onClick={(e) => { e.stopPropagation(); onPick(s) }}
+                      initial={reduced ? false : { y: 14, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1, transition: { duration: 0.4, delay: 0.35 + i * 0.035, ease: [0.16, 1, 0.3, 1] } }}
+                      whileTap={{ scale: 0.97 }}
+                      className="flex min-h-[52px] items-center gap-2.5 rounded-2xl border border-line bg-bg-raised px-3 py-2.5 text-left text-[15px] font-medium leading-tight text-ink"
+                    >
+                      <Icon className="h-5 w-5 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
+                      {INBOX.segmentChip[s]}
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
 
-/** contador em mono: troca de dígito sem animar o layout */
-function Num({ value, prefix }: { value: number; prefix: string }) {
+/** a notificação da Mariana (também usada como "pouso" na caixa de entrada) */
+function Notification({ msg, compact, reduced }: { msg: string; compact: boolean; reduced: boolean }) {
+  const av = compact ? 36 : 42
   return (
-    <span className="tabular">
-      {prefix}
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={value}
-          className="inline-block"
-          initial={{ y: '-60%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1, transition: { duration: 0.3, ease: EASE_OUT_EXPO } }}
-          exit={{ y: '60%', opacity: 0, transition: { duration: 0.15 } }}
-        >
-          {value}
-        </motion.span>
-      </AnimatePresence>
-    </span>
-  )
-}
-
-function Row({ c }: { c: Convo }) {
-  const gone = c.status === 'gone'
-  return (
-    <motion.li
-      layout="position"
-      initial={{ opacity: 0, y: -24, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1, transition: SPRING_TOUCH }}
-      exit={{ opacity: 0, transition: { duration: 0.2 } }}
-      className="relative flex items-center gap-3 border-b border-line/70 px-3.5 py-2.5"
-    >
-      <Avatar name={c.name} idx={c.tone} size={36} dim={gone} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className={`truncate text-[15px] font-semibold ${gone ? 'text-ink-muted' : 'text-ink'}`}>{c.name}</span>
-          {c.status === 'new' && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-ink" />}
-        </div>
-        <p className={`truncate text-[15px] ${gone ? 'text-ink-muted/60' : 'font-medium text-ink'}`}>{c.msg}</p>
-        <StatusLine status={c.status} />
+    <div className={`flex items-center gap-3 rounded-[22px] ${compact ? 'px-3 py-2.5' : 'px-3.5 py-3'}`} style={MATERIAL}>
+      <div
+        className="flex shrink-0 items-center justify-center rounded-full font-semibold"
+        style={{ width: av, height: av, background: MARIANA_TONE.bg, color: MARIANA_TONE.fg, fontSize: av * 0.42 }}
+        aria-hidden="true"
+      >
+        M
       </div>
-      <AnimatePresence>
-        {gone && (
-          <motion.span
-            initial={{ scale: 1.8, opacity: 0, rotate: -8 }}
-            animate={{ scale: 1, opacity: 1, rotate: -8, x: [0, -4, 4, -3, 3, 0], transition: { scale: { duration: 0.22, ease: [0.2, 0, 0, 1] }, opacity: { duration: 0.12 }, x: { duration: 0.32, delay: 0.18 } } }}
-            className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md border-2 border-leak px-2 py-0.5 font-mono text-[13px] font-bold tracking-[0.08em] text-leak"
+      <div className="min-w-0 flex-1">
+        <p className={compact ? 'text-[14px] leading-tight' : 'text-[15px] leading-tight'}>
+          <span className="font-semibold text-ink">{C.name}</span>
+          <span style={{ color: 'rgba(242,241,236,0.5)' }}> · {C.when}</span>
+        </p>
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.p
+            key={msg}
+            className={`mt-0.5 ${compact ? 'text-[15px]' : 'text-[16px]'} leading-snug`}
+            style={{ color: 'rgba(242,241,236,0.92)' }}
+            initial={reduced ? false : { opacity: 0, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)', transition: { duration: 0.35 } }}
+            exit={{ opacity: 0, filter: 'blur(4px)', transition: { duration: 0.2 } }}
           >
-            {C.stamp}
-          </motion.span>
-        )}
-      </AnimatePresence>
-      {c.status === 'answered' && (
-        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-full border border-line px-2 py-0.5 text-[12px] font-semibold text-ink-muted">
-          {C.answered}
-        </span>
-      )}
-    </motion.li>
+            {msg}
+          </motion.p>
+        </AnimatePresence>
+      </div>
+    </div>
   )
 }
 
-function StatusLine({ status }: { status: Status }) {
-  if (status === 'new') return <p className="h-[18px]" />
-  if (status === 'typing') {
-    return <p className="h-[18px] text-[13px] italic leading-[18px] text-ink-muted">{C.typing}</p>
-  }
-  const read = status !== 'sent'
+/** camada de profundidade: menor, mais alta, desfocada (blur fixo; anima só opacity/transform) */
+function DepthLayer({ text, tone, depth, at, show, reduced }: {
+  text: string; tone: number; depth: 1 | 2; at: number; show: boolean; reduced: boolean
+}) {
+  const conf = depth === 1
+    ? { scale: 0.88, y: -40, x: 14, blur: 1.6, opacity: 0.55 }
+    : { scale: 0.76, y: -74, x: -16, blur: 3.6, opacity: 0.3 }
+  const t = AVATAR_TONES[tone]
   return (
-    <p className={`flex h-[18px] items-center gap-1 truncate text-[13px] leading-[18px] ${status === 'gone' ? 'text-ink-muted/60' : 'text-ink-muted'}`}>
-      <span className="truncate">{C.you} {C.reply}</span>
-      <CheckCheck className="h-3.5 w-3.5 shrink-0" style={{ color: read ? READ_BLUE : undefined }} strokeWidth={2.5} />
-      {read && status !== 'answered' && <span className="shrink-0">· {C.seen}</span>}
-    </p>
+    <motion.div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 top-0"
+      initial={reduced ? false : { opacity: 0, scale: conf.scale * 0.94, y: conf.y + 10, x: conf.x }}
+      animate={
+        show
+          ? { opacity: conf.opacity, scale: conf.scale, y: conf.y, x: conf.x, transition: { delay: reduced ? 0 : at, duration: reduced ? 0 : 0.9, ease: [0.16, 1, 0.3, 1] } }
+          : { opacity: 0, scale: conf.scale * 0.96, y: conf.y, x: conf.x, transition: { duration: 0.3 } }
+      }
+    >
+      <div className="flex items-center gap-3 rounded-[22px] px-3.5 py-3" style={{ ...MATERIAL, filter: `blur(${conf.blur}px)` }}>
+        <div className="h-[42px] w-[42px] shrink-0 rounded-full" style={{ background: t.bg }} />
+        <p className="min-w-0 flex-1 text-[17px] font-medium leading-snug" style={{ color: 'rgba(242,241,236,0.92)' }}>{text}</p>
+      </div>
+    </motion.div>
   )
 }

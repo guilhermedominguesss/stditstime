@@ -9,25 +9,25 @@ describe('legendas de filme', () => {
 
 describe('intro', () => {
   // tudo o que aparece na intro, como texto corrido
-  const all = [
-    ...INTRO.counter(0, 0), ...INTRO.headline, INTRO.support, INTRO.cta, ...INTRO.incoming,
-    INTRO.reply, INTRO.you, INTRO.seen, INTRO.typing, INTRO.stamp, INTRO.answered, ...INTRO.names,
-  ].join(' ')
+  const all = [...INTRO.headline, INTRO.support, INTRO.cta, INTRO.name, INTRO.when, INTRO.msg, ...INTRO.depth, INTRO.nicheTitle].join(' ')
 
   it('não explica o produto (palavras proibidas)', () => {
     expect(all).not.toMatch(/\bSTD\b|sistema de triagem|raio-?x|diagn[oó]stico|simula[cç][aã]o|\bteste\b/i)
   })
 
-  it('não usa números do caso real (135, 75, 49, 77%, 36%)', () => {
-    expect(all).not.toMatch(/\b(135|75|49)\b|77\s?%|36\s?%/)
+  it('não usa números do caso real nem contador', () => {
+    expect(all).not.toMatch(/\b(135|75|49)\b|\d+\s?%/)
+    // nenhum número fora do "1 minuto" do apoio: sem contador, sem placar
+    expect(all.replace(INTRO.support, '')).not.toMatch(/\d/)
   })
 
-  it('não fala de acesso ao WhatsApp', () => {
-    expect(all).not.toMatch(/acesso|link do whatsapp|chamar no whatsapp|falar no whatsapp/i)
+  it('não fala de acesso ao WhatsApp nem de conversa sumindo', () => {
+    expect(all).not.toMatch(/acesso|link do whatsapp|chamar no whatsapp|falar no whatsapp|sumiu|visualizad/i)
   })
 
   it('headline e botão são os combinados', () => {
-    expect(INTRO.headline.join('')).toBe('Quanto está escapando do seu WhatsApp?')
+    expect(INTRO.headline.join(' ')).toBe('Quanto está escapando do seu WhatsApp?')
+    expect(INTRO.headline).toHaveLength(3) // máx. 3 linhas
     expect(INTRO.cta).toBe('Quero ver quanto eu perco')
   })
 })

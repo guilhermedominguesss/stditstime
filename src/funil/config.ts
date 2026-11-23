@@ -137,8 +137,9 @@ export const ROUTE_FLOW_MULT: Record<RouteId | 'default', number> = {
  *  - ready: com a triagem, chega "pronta pra agendar"; senão "ainda pesquisando"
  *  - quer / quando / extra: os 3 campos do card da triagem
  *
- * Regras de cada nicho (testadas em config.test.ts): 8 pessoas; a ÚLTIMA a chegar (topo
- * da lista, a que a pessoa responde) pergunta preço e não está pronta; exatamente 2
+ * Regras de cada nicho (testadas em config.test.ts): 8 pessoas; a ÚLTIMA do array (TOP) é a
+ * Mariana Costa da intro em todos os nichos: chega PRIMEIRO, fixada no topo da caixa, é a
+ * conversa que a pessoa responde e a primeira a sumir; pergunta preço e não está pronta; exatamente 2
  * readyBefore, ambas ready; exatamente 6 ready. As 6 que não eram readyBefore "somem
  * depois do preço" na demo da dor.
  * O STD não barra ninguém: as 8 chegam de novo, todas identificadas.
@@ -191,14 +192,14 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
     reply: REPLY_AVALIACAO,
     seenBefore: ['como funciona', 'resultados reais', 'quantas sessões', 'tempo de recuperação', 'quem pode fazer'],
     people: [
-      P('Mariana Costa', 'oi, quanto custa o botox?', false, true, 'Botox · testa', 'até dia 12', 'sim'),
+      P('Amanda Costa', 'oi, quanto custa o botox?', false, true, 'Botox · testa', 'até dia 12', 'sim'),
       P('Rafael Nunes', 'valor?', false, true, 'Harmonização · queixo', 'este mês', 'sim'),
       P('Carla Mendes', 'tem horário amanhã à tarde?', true, true, 'Limpeza de pele', 'amanhã à tarde', 'não'),
       P('Bruno Teixeira', '?', false, false, 'Depilação a laser · costas', 'sem data', 'sim'),
       P('Fernanda Alves', 'qual o preço do procedimento?', false, true, 'Bioestimulador · rosto', 'próximas 2 semanas', 'sim'),
       P('Diego Martins', 'oi', false, false, 'Peeling', 'só comparando preços', 'sim'),
       P('Beatriz Rocha', 'vi o anúncio, tem horário sábado?', true, true, 'Sculpt Ice · abdômen', 'sábado', 'não'),
-      P('Juliana Reis', 'oi, quanto fica o preenchimento?', false, true, 'Preenchimento labial', 'este mês', 'sim'),
+      P('Mariana Costa', 'oi, quanto fica o preenchimento?', false, true, 'Preenchimento labial', 'este mês', 'sim'),
     ],
   },
   odonto: {
@@ -214,7 +215,7 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
       P('Gustavo Ramos', 'qual o preço do implante?', false, true, 'Implante · 1 dente', 'próximas semanas', 'sim'),
       P('Renata Souza', 'oi', false, false, 'Limpeza', 'sem pressa', 'não'),
       P('Tiago Ferreira', 'dá pra ver uma dor no dente hoje?', true, true, 'Urgência · dor de dente', 'hoje', 'não'),
-      P('Camila Duarte', 'quanto custa a lente de contato dental?', false, true, 'Lentes de contato', 'este mês', 'sim'),
+      P('Mariana Costa', 'quanto custa a lente de contato dental?', false, true, 'Lentes de contato', 'este mês', 'sim'),
     ],
   },
   clinica: {
@@ -230,7 +231,7 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
       P('Eduardo Lima', 'aceita convênio? quanto fica particular?', false, true, 'Check-up · empresa', 'próximo mês', '3 funcionários'),
       P('Vanessa Rocha', 'oi', false, false, 'Consulta', 'só pesquisando', 'a mãe'),
       P('André Souza', 'tem horário sábado de manhã?', true, true, 'Pediatria', 'sábado de manhã', 'o filho'),
-      P('Cláudia Reis', 'quanto custa a consulta particular?', false, true, 'Consulta · ginecologia', 'próxima semana', 'ela mesma'),
+      P('Mariana Costa', 'quanto custa a consulta particular?', false, true, 'Consulta · ginecologia', 'próxima semana', 'ela mesma'),
     ],
   },
   educacao: {
@@ -246,7 +247,7 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
       P('Matheus Carvalho', 'qual o preço do curso?', false, true, 'Inglês para negócios', 'este mês', 'intermediário'),
       P('Letícia Gomes', 'oi', false, false, 'Inglês infantil', 'ano que vem', 'iniciante'),
       P('Daniel Oliveira', 'posso fazer aula experimental sábado?', true, true, 'Aula experimental', 'sábado', 'básico'),
-      P('Priscila Barros', 'quanto custa o curso de inglês?', false, true, 'Inglês · conversação', 'começar já', 'intermediário'),
+      P('Mariana Costa', 'quanto custa o curso de inglês?', false, true, 'Inglês · conversação', 'começar já', 'intermediário'),
     ],
   },
   servicos: {
@@ -262,7 +263,7 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
       P('Vinícius Rezende', 'qual o preço do serviço?', false, true, 'Manutenção mensal', 'começar já', 'definida'),
       P('Elaine Cardoso', 'oi', false, false, 'Consultoria', 'só cotando', 'ainda não'),
       P('Fábio Monteiro', 'dá pra fazer uma reunião sexta?', true, true, 'Reunião de proposta', 'sexta', 'definida'),
-      P('Adriana Mello', 'quanto fica o orçamento?', false, true, 'Projeto · escritório', 'prazo de 45 dias', 'definida'),
+      P('Mariana Costa', 'quanto fica o orçamento?', false, true, 'Projeto · escritório', 'prazo de 45 dias', 'definida'),
     ],
   },
   varejo: {
@@ -278,7 +279,7 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
       P('Alexandre Cunha', 'qual o preço no atacado?', false, true, 'Atacado · 50 peças', 'este mês', 'entrega'),
       P('Jéssica Vieira', 'oi', false, false, 'Vestido', 'só olhando', 'a definir'),
       P('Caio Medeiros', 'vocês entregam amanhã?', true, true, 'Cesta de aniversário', 'amanhã', 'entrega'),
-      P('Luana Ribeiro', 'quanto fica com o frete?', false, true, 'Conjunto · tamanho M', 'esta semana', 'entrega'),
+      P('Mariana Costa', 'quanto fica com o frete?', false, true, 'Conjunto · tamanho M', 'esta semana', 'entrega'),
     ],
   },
   alimentacao: {
@@ -294,7 +295,7 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
       P('Otávio Brandão', 'qual o preço do almoço corporativo?', false, true, 'Almoço · empresa', 'toda semana', '15'),
       P('Carolina Neves', 'oi', false, false, 'Bolo', 'só vendo o cardápio', 'a definir'),
       P('Wagner Lima', 'faz entrega sábado?', true, true, 'Marmitas da semana', 'entrega sábado', '2'),
-      P('Rafaela Antunes', 'quanto custa o cento de salgado?', false, true, 'Salgados · 300 unidades', 'dia 20', '60'),
+      P('Mariana Costa', 'quanto custa o cento de salgado?', false, true, 'Salgados · 300 unidades', 'dia 20', '60'),
     ],
   },
   outro: {
@@ -310,7 +311,7 @@ export const INBOX_BANK: Record<SegmentId, InboxNiche> = {
       P('Fernando Brito', 'qual o preço do serviço?', false, true, 'Plano completo', 'começar já', 'não'),
       P('Sabrina Costa', 'oi', false, false, 'Orçamento', 'só pesquisando', 'não'),
       P('Igor Santana', 'consigo ir sábado?', true, true, 'Visita', 'sábado', 'sim'),
-      P('Viviane Lopes', 'quanto fica o pacote?', false, true, 'Pacote · 3 meses', 'próxima semana', 'não'),
+      P('Mariana Costa', 'quanto fica o pacote?', false, true, 'Pacote · 3 meses', 'próxima semana', 'não'),
     ],
   },
 }

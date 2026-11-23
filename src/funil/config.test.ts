@@ -14,6 +14,8 @@ describe('banco da caixa de entrada por nicho', () => {
     expect(ps.filter((p) => p.readyBefore).every((p) => p.ready)).toBe(true)
     expect(ps.filter((p) => p.ready)).toHaveLength(6)
     expect(new Set(ps.map((p) => p.name)).size).toBe(8)
+    // a Mariana da intro é a última da lista em todos os nichos (a que pergunta o preço)
+    expect(ps[ps.length - 1].name).toBe('Mariana Costa')
     // "Antes de chamar, viu:" nunca fala de preço (regras de conselho profissional)
     expect(niche.seenBefore).toHaveLength(5)
     for (const s of niche.seenBefore) expect(s).not.toMatch(/R\$|preço|valor|custa/i)

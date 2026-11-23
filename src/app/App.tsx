@@ -63,7 +63,7 @@ export default function App() {
         tracker.event('fv_intro_view', tracker.timing())
         break
       case 'intro_cta':
-        tracker.event('fv_intro_cta', { cycles_seen: e.cycles, ...tracker.timing() })
+        tracker.event('fv_intro_cta', { watched_ms: e.watchedMs, ...tracker.timing() })
         tracker.patch({ intro_cta_at: 'now' })
         break
       case 'input': {
