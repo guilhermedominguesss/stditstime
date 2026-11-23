@@ -114,7 +114,7 @@ export const INBOX = {
   lastSeen: (hora: string) => `visto por último às ${hora}`,
   question: 'Isso te parece familiar?',
   cta: 'Ver o mesmo anúncio com filtro',
-  ctaSub: 'STD: uma etapa antes do WhatsApp que conhece a pessoa',
+  ctaSub: 'STD: um filtro antes do WhatsApp que conhece a pessoa',
   readyTag: 'pronta pra agendar',
   researchingTag: 'ainda pesquisando',
   fieldQuer: 'Quer',
@@ -174,7 +174,7 @@ export const PROVA = {
   label: 'CASO REAL · ÚLTIMOS 30 DIAS',
   bars: { leads: 'LEADS', appointments: 'AGENDAMENTOS', closes: 'FECHAMENTOS' },
   chips: { qualified: 'RESPOSTAS QUALIFICADAS', abandon: 'DE ABANDONO', leadToClient: 'DE LEAD A CLIENTE' },
-  fine: 'Resultado do funil completo: tráfego + STD + comercial da clínica.',
+  fine: 'Resultado do funil completo: tráfego + STD (um filtro antes do WhatsApp) + comercial da clínica.',
   openStd: 'Ver o STD da Thais por dentro',
   backToFunnel: 'Voltar ao meu funil',
   openNewTab: 'Abrir em nova aba',
@@ -214,8 +214,32 @@ export const SAIDA_QUALIFICADO = {
 } as const
 
 export const SAIDA_NAO_QUALIFICADO = {
-  title: 'Seu funil ainda não precisa de um STD.',
+  title: 'Seu funil ainda não precisa de um STD, um filtro antes do WhatsApp.',
   subtitle: 'Precisa disso primeiro. Os 7 vazamentos mais comuns:',
   footer: 'Quando o seu volume crescer, refaça o Funil Vivo.',
   restart: 'Refazer agora',
+} as const
+
+/* ------------------------------------------------------------------ */
+/* Cena "intro" (antes da pergunta de nicho)                           */
+/* A intro é a continuação do anúncio: proibido "STD", "raio-x",       */
+/* "diagnóstico", "simulação", "teste", números do caso real e textos  */
+/* sobre acesso ao WhatsApp (testado em copy.test.ts).                 */
+/* ------------------------------------------------------------------ */
+
+export const INTRO = {
+  counter: (respondidas: number, sumiram: number) => [`RESPONDIDAS ${respondidas}`, `SUMIRAM ${sumiram}`] as const,
+  /** a parte entre colchetes ganha destaque em signal */
+  headline: ['Quanto está escapando do ', 'seu WhatsApp', '?'] as const,
+  support: '1 minuto. Sem formulário: você responde tocando na tela.',
+  cta: 'Quero ver quanto eu perco',
+  /** mensagens neutras (qualquer nicho) de quem chega */
+  incoming: ['oi, quanto custa?', 'valor?', '?', 'qual o preço?', 'oi, quanto fica?'] as const,
+  reply: 'Oi! Fica R$ 390.',
+  you: 'Você:',
+  seen: 'Visualizada',
+  typing: 'digitando…',
+  stamp: 'SUMIU',
+  answered: 'respondeu',
+  names: ['Ana', 'Bruno', 'Carla', 'Diego', 'Fernanda', 'Gustavo', 'Juliana', 'Lucas', 'Marina', 'Rafael', 'Patrícia', 'Thiago'] as const,
 } as const

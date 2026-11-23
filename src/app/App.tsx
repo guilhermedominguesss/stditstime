@@ -55,7 +55,16 @@ export default function App() {
         pixel('ViewContent', { content_name: 'Funil Vivo', segmento: e.segment })
         break
       case 'scene':
-        if (e.scene !== 'nicho') enter(e.scene)
+        // a sessão já nasce com last_scene = intro
+        if (e.scene !== 'intro') enter(e.scene)
+        break
+      case 'intro_painted':
+        tracker.firstPaint()
+        tracker.event('fv_intro_view', tracker.timing())
+        break
+      case 'intro_cta':
+        tracker.event('fv_intro_cta', { cycles_seen: e.cycles, ...tracker.timing() })
+        tracker.patch({ intro_cta_at: 'now' })
         break
       case 'input': {
         const valor = e.field === 'ticket' ? TICKET_MIDPOINTS[e.value as TicketId] : e.value

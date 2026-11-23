@@ -10,6 +10,7 @@ import {
   ChatPain, ChatTriage, ConversationRow, CountUp, NichePicker, TOP, TOTAL,
   TriageCardCompact, TriageCardFull, rowVariants, seenFor, smoothScrollTo, vibrate, type PainStep,
 } from './parts'
+import { Intro } from './Intro'
 
 /**
  * Caixa de Entrada Viva (cenas 0–7 do app): nicho → a caixa enche → a dor ensinada com 1
@@ -19,7 +20,7 @@ import {
  */
 
 export type InboxScene =
-  | 'nicho' | 'chegando' | 'responda' | 'chat' | 'sumindo' | 'familiar'
+  | 'intro' | 'nicho' | 'chegando' | 'responda' | 'chat' | 'sumindo' | 'familiar'
   | 'de_cada_10' | 'perguntas' | 'rebobina' | 'frase' | 'cards' | 'resultado'
 
 export interface InboxResult {
@@ -37,13 +38,17 @@ export type InboxEvent =
   | { type: 'std_on' }
   | { type: 'result'; result: InboxResult }
   | { type: 'open_card' }
+  /** a intro ficou pintada na tela (primeiro frame) */
+  | { type: 'intro_painted' }
+  /** toque em "Quero ver quanto eu perco"; cycles = ciclos da animação vistos antes */
+  | { type: 'intro_cta'; cycles: number }
 
 type Phase =
-  | 'niche' | 'arriving' | 'prompt' | 'chat' | 'ghosting' | 'dim' | 'question'
+  | 'intro' | 'introOut' | 'niche' | 'arriving' | 'prompt' | 'chat' | 'ghosting' | 'dim' | 'question'
   | 'askVanish' | 'askQuick' | 'rewind' | 'phrase' | 'cards' | 'done'
 
 const SCENE_OF: Record<Phase, InboxScene> = {
-  niche: 'nicho', arriving: 'chegando', prompt: 'responda', chat: 'chat', ghosting: 'sumindo',
+  intro: 'intro', introOut: 'intro', niche: 'nicho', arriving: 'chegando', prompt: 'responda', chat: 'chat', ghosting: 'sumindo',
   dim: 'familiar', question: 'familiar', askVanish: 'de_cada_10', askQuick: 'perguntas',
   rewind: 'rebobina', phrase: 'frase', cards: 'cards', done: 'resultado',
 }
@@ -76,7 +81,7 @@ const VARIANTS = rowVariants(T.rewindStagger)
 
 export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => void; onProof: () => void }) {
   const [segment, setSegment] = useState<SegmentId | null>(null)
-  const [phase, setPhase] = useState<Phase>('niche')
+  const [phase, setPhase] = useState<Phase>('intro')
   const [n, setN] = useState(0)
   const [ghosted, setGhosted] = useState<number[]>([])
   const [step, setStep] = useState<PainStep>('compose')
@@ -248,7 +253,37 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
 
   /* ---------------- render ---------------- */
 
-  if (phase === 'niche' || !niche) return <NichePicker onPick={start} />
+  // intro → a caixa cresce (500ms) → a pergunta de nicho aparece por cima, sem corte
+  if (phase === 'intro' || phase === 'introOut' || phase === 'niche' || !niche) {
+    return (
+      <>
+        <Intro
+          leaving={phase !== 'intro'}
+          onPainted={() => emit.current?.({ type: 'intro_painted' })}
+          onCta={(cycles) => {
+            if (phase !== 'intro') return
+            vibrate(12)
+            emit.current?.({ type: 'intro_cta', cycles })
+            setPhase('introOut')
+            later(() => setPhase('niche'), 520)
+          }}
+        />
+        <AnimatePresence>
+          {phase === 'niche' && (
+            <motion.div
+              key="niche"
+              className="absolute inset-0 z-30 flex flex-col"
+              style={{ background: 'rgba(11,12,15,0.94)' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { duration: 0.3 } }}
+            >
+              <NichePicker onPick={start} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    )
+  }
 
   const isBefore = ['arriving', 'prompt', 'chat', 'ghosting', 'dim', 'question', 'askVanish', 'askQuick'].includes(phase)
   const showList = isBefore || phase === 'rewind'

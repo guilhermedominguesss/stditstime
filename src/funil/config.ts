@@ -389,7 +389,7 @@ export function whatsappMessage(d: WhatsAppData, money: (n: number) => string): 
     `Conversão hoje: ${d.conv10}/10 · Ticket: ${d.ticketLabel}`,
     ganho,
     '',
-    `Quero ver como seria um STD pro meu negócio. [${d.refCode}]`,
+    `Quero ver como seria um STD, um filtro antes do WhatsApp, pro meu negócio. [${d.refCode}]`,
   ].join('\n')
 }
 

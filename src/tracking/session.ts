@@ -65,6 +65,15 @@ export function detectDevice(ua: string, width: number): Device {
   return 'desktop'
 }
 
+/**
+ * Robôs que abrem o link (prévia do Facebook/Instagram, buscadores, verificadores):
+ * não viram sessão.
+ */
+export function isCrawler(ua: string): boolean {
+  // "bot/" (Googlebot/2.1, bingbot/2.0…) e não "bot" solto: o celular Cubot não é robô
+  return /facebookexternalhit|facebot|bot\/|crawler|spider|preview|headlesschrome|lighthouse/i.test(ua)
+}
+
 /** Navegador interno: 95% do tráfego vem daqui. */
 export function detectInAppBrowser(ua: string): 'instagram' | 'facebook' | 'outro' | null {
   if (/Instagram/i.test(ua)) return 'instagram'
