@@ -103,8 +103,7 @@ export function Avatar({ name, idx, size, dim = false }: { name: string; idx: nu
       style={{ width: size, height: size, background: tone.bg, color: tone.fg, fontSize: size * 0.36, opacity: dim ? 0.45 : 1 }}
       aria-hidden="true"
     >
-      {/* a Mariana mantém o "M" da notificação da intro */}
-      {idx === TOP ? name[0] : initials(name)}
+      {initials(name)}
     </div>
   )
 }
@@ -125,9 +124,10 @@ export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap
 }) {
   return (
     <motion.li
-      layout="position"
+      // a Mariana: o MESMO card da intro se move e encolhe até a linha (450ms, expo out)
+      layout={layoutId ? true : 'position'}
       layoutId={layoutId}
-      transition={layoutId ? { layout: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } } : undefined}
+      transition={layoutId ? { layout: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } } : undefined}
       custom={index}
       variants={variants}
       initial="initial"
@@ -141,9 +141,9 @@ export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap
         onClick={onTap ? (e) => { e.stopPropagation(); onTap() } : undefined}
         onKeyDown={onTap ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap() } } : undefined}
         className="relative flex w-full gap-3 border-b border-line/70 px-4 py-3 text-left"
-        // pouso: o cinza da notificação se dissolve no fundo da lista
-        initial={layoutId ? { backgroundColor: 'rgba(58,58,63,0.75)' } : false}
-        animate={{ backgroundColor: ghost ? 'rgba(14,16,19,0.6)' : 'rgba(14,16,19,0)', transition: { duration: layoutId ? 0.9 : 0.3, delay: layoutId ? 0.35 : 0 } }}
+        // pouso: o material da notificação (cinza, cantos 22) vira linha durante o morph
+        initial={layoutId ? { backgroundColor: 'rgba(56,56,62,0.82)', borderRadius: 22 } : false}
+        animate={{ backgroundColor: ghost ? 'rgba(14,16,19,0.6)' : 'rgba(14,16,19,0)', borderRadius: 0, transition: { duration: layoutId ? 0.45 : 0.3, ease: [0.16, 1, 0.3, 1] } }}
       >
         {pulsing && (
           <motion.span

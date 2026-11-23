@@ -9,7 +9,7 @@ describe('legendas de filme', () => {
 
 describe('intro', () => {
   // tudo o que aparece na intro, como texto corrido
-  const all = [...INTRO.headline, INTRO.support, INTRO.cta, INTRO.name, INTRO.when, INTRO.msg, ...INTRO.depth, INTRO.nicheTitle].join(' ')
+  const all = [...INTRO.headline, INTRO.support, INTRO.cta, INTRO.name, INTRO.when, INTRO.msg, ...INTRO.nicheTitle].join(' ')
 
   it('não explica o produto (palavras proibidas)', () => {
     expect(all).not.toMatch(/\bSTD\b|sistema de triagem|raio-?x|diagn[oó]stico|simula[cç][aã]o|\bteste\b/i)
@@ -29,5 +29,6 @@ describe('intro', () => {
     expect(INTRO.headline.join(' ')).toBe('Quanto está escapando do seu WhatsApp?')
     expect(INTRO.headline).toHaveLength(3) // máx. 3 linhas
     expect(INTRO.cta).toBe('Quero ver quanto eu perco')
+    expect(INTRO.support).toBe('1 minuto. Sem formulário, só toques na tela.')
   })
 })

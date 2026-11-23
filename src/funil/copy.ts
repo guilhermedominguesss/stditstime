@@ -230,14 +230,13 @@ export const SAIDA_NAO_QUALIFICADO = {
 export const INTRO = {
   /** 3 linhas fixas (sem "do" órfão): 2 em Inter Tight 600 + 1 em Instrument Serif itálico, maior. Sem verde. */
   headline: ['Quanto está', 'escapando do', 'seu WhatsApp?'] as const,
-  support: '1 minuto. Sem formulário: você responde tocando na tela.',
+  support: '1 minuto. Sem formulário, só toques na tela.',
   cta: 'Quero ver quanto eu perco',
-  /** a notificação protagonista (sem logo, sem interface de app) */
-  name: 'Mariana',
+  /** a notificação protagonista (sem logo, sem interface de app); mesmo nome na caixa */
+  name: 'Mariana Costa',
+  initials: 'MC',
   when: 'agora',
   msg: 'oi, quanto custa?',
-  /** camadas de profundidade atrás dela (não é lista) */
-  depth: ['valor?', '?'] as const,
-  /** depois do toque, abaixo da Mariana, na mesma cena */
-  nicheTitle: 'Começa pelo seu negócio:',
+  /** depois do toque, abaixo da Mariana: Inter Tight 600 + Instrument Serif itálico, maior */
+  nicheTitle: ['A Mariana chamou.', 'Qual é o seu negócio?'] as const,
 } as const

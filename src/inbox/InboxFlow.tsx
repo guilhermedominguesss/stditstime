@@ -10,7 +10,7 @@ import {
   ChatPain, ChatTriage, ConversationRow, CountUp, TOP, TOTAL,
   TriageCardCompact, TriageCardFull, rowVariants, seenFor, smoothScrollTo, vibrate, type PainStep,
 } from './parts'
-import { Intro, MARIANA_LAYOUT_ID } from './Intro'
+import { Intro, MARIANA_LAYOUT_ID, type IntroStage, type PaintCheck } from './Intro'
 
 /**
  * Caixa de Entrada Viva (cenas 0–7 do app): nicho → a caixa enche → a dor ensinada com 1
@@ -39,7 +39,7 @@ export type InboxEvent =
   | { type: 'result'; result: InboxResult }
   | { type: 'open_card' }
   /** a intro ficou pintada na tela (primeiro frame) */
-  | { type: 'intro_painted' }
+  | { type: 'intro_painted'; check: PaintCheck }
   /** toque em "Quero ver quanto eu perco"; watchedMs = tempo na intro antes do toque */
   | { type: 'intro_cta'; watchedMs: number }
 
@@ -56,8 +56,10 @@ const SCENE_OF: Record<Phase, InboxScene> = {
 const T = {
   /** a Mariana pousa; a próxima conversa chega depois disso */
   firstArrive: 900,
-  /** morph da mensagem da Mariana (intro → nicho) antes de ela pousar na caixa */
-  landing: 650,
+  /** troca da mensagem da Mariana (intro → nicho) antes de ela virar a linha da caixa */
+  landing: 420,
+  /** a intro some em fade por baixo da caixa enquanto o card vira linha */
+  handoff: 450,
   arriveEvery: 450,
   promptDelay: 600,
   seen: 700,
@@ -151,7 +153,10 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
     later(() => begin(), T.landing)
   }
 
+  const [handoff, setHandoff] = useState(false)
   const begin = () => {
+    setHandoff(true)
+    later(() => setHandoff(false), T.handoff)
     setN(1) // a Mariana já chegou (veio da intro)
     setGhosted([])
     setVanish([])
@@ -263,27 +268,25 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
 
   /* ---------------- render ---------------- */
 
-  // intro → textos saem (200ms) → a Mariana sobe e a pergunta de nicho aparece embaixo dela →
-  // escolhido o nicho, a mensagem dela vira a do nicho → ela pousa como 1ª conversa da caixa
-  if (phase === 'intro' || phase === 'introOut' || phase === 'niche' || phase === 'landing' || !niche) {
-    return (
-      <LayoutGroup id="inbox">
-        <Intro
-          stage={phase === 'intro' ? 'intro' : phase === 'introOut' ? 'leaving' : phase === 'landing' ? 'landing' : 'niche'}
-          landingMsg={niche ? niche.people[TOP].msg : null}
-          onPainted={() => emit.current?.({ type: 'intro_painted' })}
-          onCta={(watchedMs) => {
-            if (phase !== 'intro') return
-            vibrate(12)
-            emit.current?.({ type: 'intro_cta', watchedMs })
-            setPhase('introOut')
-            later(() => setPhase('niche'), 200)
-          }}
-          onPick={start}
-        />
-      </LayoutGroup>
-    )
-  }
+  // intro → (toque) a Mariana sobe enquanto a pergunta de nicho entra → (nicho) a mensagem dela
+  // vira a do nicho → handoff: o card vira a 1ª linha da caixa e a intro some em fade por baixo
+  const introPhase = phase === 'intro' || phase === 'introOut' || phase === 'niche' || phase === 'landing'
+  const introStage: IntroStage = phase === 'intro' || phase === 'introOut' ? 'intro' : phase === 'niche' ? 'niche' : phase === 'landing' ? 'landing' : 'handoff'
+  const introEl = introPhase || handoff ? (
+    <Intro
+      stage={introStage}
+      landingMsg={niche ? niche.people[TOP].msg : null}
+      onPainted={(check) => emit.current?.({ type: 'intro_painted', check })}
+      onCta={(watchedMs) => {
+        if (phase !== 'intro') return
+        vibrate(12)
+        emit.current?.({ type: 'intro_cta', watchedMs })
+        setPhase('niche')
+      }}
+      onPick={start}
+    />
+  ) : null
+  if (introPhase || !niche) return <LayoutGroup id="inbox">{introEl}</LayoutGroup>
 
   const isBefore = ['arriving', 'prompt', 'chat', 'ghosting', 'dim', 'question', 'askVanish', 'askQuick'].includes(phase)
   const showList = isBefore || phase === 'rewind'
@@ -298,9 +301,15 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
 
   return (
     <LayoutGroup id="inbox">
+    {introEl}
     <div className="absolute inset-0 flex flex-col" onClick={skip}>
       {!isAfter && (
-        <header className="flex items-center justify-between px-5 pb-3" style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}>
+        <motion.header
+          className="flex items-center justify-between px-5 pb-3"
+          style={{ paddingTop: 'max(20px, env(safe-area-inset-top))' }}
+          initial={{ y: -28, opacity: 0 }}
+          animate={{ y: 0, opacity: 1, transition: { duration: 0.45, ease: EASE_OUT_EXPO } }}
+        >
           <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-ink">{C.title}</h1>
           <AnimatePresence>
             {(phase === 'arriving' || phase === 'prompt') && n > 0 && (
@@ -316,7 +325,7 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
               </motion.span>
             )}
           </AnimatePresence>
-        </header>
+        </motion.header>
       )}
 
       {/* a dor, em número e em dinheiro (ticket médio do nicho: é simulação) */}

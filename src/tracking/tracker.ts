@@ -152,7 +152,7 @@ class Tracker {
     this.queue.push({ kind: 'event', tries: 0, sid: this.sessionId, name: 'fv_view', scene: this.scene, payload: { preloaded: this.preloaded } })
     if (this.pendingFirstPaint) {
       this.pendingFirstPaint = false
-      this.queue.push({ kind: 'event', tries: 0, sid: this.sessionId, name: 'fv_first_paint', scene: this.scene, payload: this.timing() })
+      this.queue.push({ kind: 'event', tries: 0, sid: this.sessionId, name: 'fv_first_paint', scene: this.scene, payload: { ...this.timing(), ...this.paintCheck } })
     }
     this.queue.push(...this.early)
     this.early = []
@@ -167,11 +167,15 @@ class Tracker {
    * A intro está pintada. Se a página ainda estiver escondida (pré-carregamento), o
    * evento sai no momento em que ela ficar visível: é aí que a pessoa vê de fato.
    */
-  firstPaint() {
+  firstPaint(check: Record<string, unknown> = {}) {
     if (this.disabled) return
-    if (this.started) this.event('fv_first_paint', this.timing())
+    this.paintCheck = check
+    if (this.started) this.event('fv_first_paint', { ...this.timing(), ...check })
     else this.pendingFirstPaint = true
   }
+
+  /** o que estava visível no 1º paint (headline/apoio/botão, fontes) */
+  private paintCheck: Record<string, unknown> = {}
 
   /** ms desde o carregamento e desde que a página ficou visível (para os tempos). */
   timing() {

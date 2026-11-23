@@ -59,7 +59,7 @@ export default function App() {
         if (e.scene !== 'intro') enter(e.scene)
         break
       case 'intro_painted':
-        tracker.firstPaint()
+        tracker.firstPaint({ ...e.check })
         tracker.event('fv_intro_view', tracker.timing())
         break
       case 'intro_cta':
