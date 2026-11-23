@@ -115,12 +115,14 @@ export const rowVariants = (stagger: number): Variants => ({
   exit: (i: number) => ({ opacity: 0, y: -70, transition: { duration: 0.24, delay: i * (stagger / 1000), ease: [0.4, 0, 1, 1] } }),
 })
 
-export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap, layoutId, pinned = false }: {
+export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap, layoutId, pinned = false, hint }: {
   p: InboxPerson; idx: number; index: number; variants: Variants; pulsing: boolean; ghost: boolean; onTap?: () => void
   /** a Mariana pousa vindo da intro (mesmo layoutId da notificação) */
   layoutId?: string
   /** fixada no topo (ícone de alfinete): as outras chegam abaixo dela */
   pinned?: boolean
+  /** dica presa logo abaixo da linha (ex.: "Responda uma.") */
+  hint?: ReactNode
 }) {
   return (
     <motion.li
@@ -148,8 +150,9 @@ export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap
         {pulsing && (
           <motion.span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-1 rounded-2xl ring-2 ring-ink"
-            animate={{ opacity: [0.7, 0.15, 0.7] }}
+            className="pointer-events-none absolute inset-1 rounded-2xl"
+            style={{ background: 'rgba(198,255,61,0.05)', boxShadow: '0 0 22px 2px rgba(198,255,61,0.22), inset 0 0 0 1px rgba(198,255,61,0.18)' }}
+            animate={{ opacity: [0.35, 1, 0.35] }}
             transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
@@ -179,6 +182,19 @@ export function ConversationRow({ p, idx, index, variants, pulsing, ghost, onTap
           </AnimatePresence>
         </div>
       </motion.div>
+      <AnimatePresence>
+        {hint && (
+          <motion.div
+            key="hint"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto', transition: { duration: 0.4, ease: EASE_OUT_EXPO } }}
+            exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+            className="overflow-hidden"
+          >
+            {hint}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.li>
   )
 }
@@ -462,7 +478,7 @@ export function ChatPain({ p, idx, reply, step, onSend, onFastForward }: {
                 whileTap={{ scale: 0.95 }}
                 animate={{ scale: [1, 1.04, 1] }}
                 transition={{ duration: 1.6, repeat: Infinity }}
-                className="h-12 shrink-0 rounded-2xl bg-ink px-5 text-[16px] font-semibold text-bg"
+                className="h-12 shrink-0 rounded-2xl bg-signal px-5 text-[16px] font-semibold text-bg"
               >
                 {C.send}
               </motion.button>
@@ -537,7 +553,9 @@ function Bubble({ time: t, children }: { time: string; children: ReactNode }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0, transition: { duration: 0.35, delay: 0.3 } }}
-      className="max-w-[80%] self-start rounded-2xl rounded-bl-md bg-bg-raised px-3.5 py-2.5 text-[16px] leading-snug text-ink"
+      // bg-raised puro (#0E1013) some no fundo do chat: um degrau mais claro, como num app real
+      className="max-w-[80%] self-start rounded-2xl rounded-bl-md border border-line px-3.5 py-2.5 text-[16px] leading-snug text-ink"
+      style={{ background: '#1A1D22' }}
     >
       {children}
       <span className="ml-2 align-bottom text-[15px] text-ink-muted">{t}</span>

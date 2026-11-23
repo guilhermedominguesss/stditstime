@@ -57,7 +57,7 @@ const T = {
   /** a Mariana pousa; a próxima conversa chega depois disso */
   firstArrive: 900,
   /** troca da mensagem da Mariana (intro → nicho) antes de ela virar a linha da caixa */
-  landing: 420,
+  landing: 120,
   /** a intro some em fade por baixo da caixa enquanto o card vira linha */
   handoff: 450,
   arriveEvery: 450,
@@ -368,6 +368,12 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
                   onTap={i === TOP ? openChat : undefined}
                   layoutId={i === TOP ? MARIANA_LAYOUT_ID : undefined}
                   pinned={i === TOP}
+                  hint={phase === 'prompt' && i === TOP ? (
+                    <p className="flex items-center gap-2 border-b border-line/70 px-4 pb-3 pt-1 text-[18px] font-semibold text-ink">
+                      <ArrowUp className="h-5 w-5" aria-hidden="true" />
+                      {C.replyOne}
+                    </p>
+                  ) : undefined}
                 />
               ))}
             </AnimatePresence>
@@ -427,18 +433,6 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
 
       <div className="pb-safe px-4 pb-4 pt-2">
         <AnimatePresence mode="wait">
-          {phase === 'prompt' && (
-            <motion.p
-              key="reply"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE_OUT_EXPO } }}
-              exit={{ opacity: 0 }}
-              className="flex h-14 items-center justify-center gap-2 text-[20px] font-semibold text-ink"
-            >
-              <ArrowUp className="h-5 w-5" aria-hidden="true" />
-              {C.replyOne}
-            </motion.p>
-          )}
           {phase === 'done' && (
             <motion.button
               key="proof"

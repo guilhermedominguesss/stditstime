@@ -15,7 +15,7 @@ import { SEGMENT_ORDER } from './parts'
  *
  * Toque: headline/apoio/botão saem (200ms) AO MESMO TEMPO em que ela sobe e a pergunta de
  * nicho entra (sem frame só com a notificação).
- * Nicho: a mensagem dela vira a do nicho e, em 'handoff', o card some daqui no mesmo
+ * Nicho: a mensagem dela NÃO muda ("oi, quanto custa?"); em 'handoff' o card some daqui no mesmo
  * commit em que a linha dela nasce na caixa (layoutId "mariana"): o mesmo card se move e
  * encolhe até a linha (450ms, expo out) enquanto o resto da intro some em fade por baixo.
  *
@@ -147,7 +147,8 @@ export function Intro({ stage, landingMsg, onCta, onPick, onPainted }: {
               key="pitch"
               ref={pitchRef}
               className="shrink-0 pt-12"
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              // desce 12px e some em 120ms (ease-out: já quase invisível quando o nicho começa, aos 80ms)
+              exit={{ opacity: 0, y: 12, transition: { duration: 0.12, ease: [0, 0, 0.2, 1] } }}
             >
               <h1 className="text-ink">
                 <span className="block font-semibold leading-[1.06] tracking-[-0.02em]" style={{ fontSize: 'clamp(32px, min(9.6vw, 5.8vh), 38px)' }}>
@@ -174,14 +175,18 @@ export function Intro({ stage, landingMsg, onCta, onPick, onPainted }: {
             <motion.section
               key="niche"
               className="shrink-0 pt-7"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: stage === 'niche' ? 1 : 0, y: 0 }}
-              transition={{ duration: stage === 'niche' ? 0.3 : 0.25, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: stage === 'niche' ? 1 : 0 }}
+              transition={{ duration: 0.25 }}
             >
-              <h2 className="text-ink">
+              <motion.h2
+                className="text-ink"
+                initial={reduced ? false : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.32, delay: 0.08, ease: [0.16, 1, 0.3, 1] } }}
+              >
                 <span className="block text-[24px] font-semibold leading-[1.1] tracking-[-0.01em]">{C.nicheTitle[0]}</span>
                 <span className="block font-serif text-[32px] italic leading-[1.08]">{C.nicheTitle[1]}</span>
-              </h2>
+              </motion.h2>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 {SEGMENT_ORDER.map((s, i) => (
                   <motion.button
@@ -189,8 +194,8 @@ export function Intro({ stage, landingMsg, onCta, onPick, onPainted }: {
                     type="button"
                     disabled={stage !== 'niche'}
                     onClick={(e) => { e.stopPropagation(); onPick(s) }}
-                    initial={reduced ? false : { y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1, transition: { duration: 0.35, delay: 0.05 + i * 0.03, ease: [0.16, 1, 0.3, 1] } }}
+                    initial={reduced ? false : { y: 16, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1, transition: { duration: 0.32, delay: 0.1 + i * 0.025, ease: [0.16, 1, 0.3, 1] } }}
                     whileTap={{ scale: 0.97 }}
                     className="flex h-[52px] items-center rounded-2xl border border-line bg-bg-raised px-3.5 text-left text-[16px] font-medium leading-tight text-ink"
                   >

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INBOX_BANK, REPLY_AVALIACAO } from './config'
+import { INBOX_BANK, REPLY_AVALIACAO, priceReply } from './config'
 import { INTRO } from './copy'
 
 describe('banco da caixa de entrada por nicho', () => {
@@ -17,9 +17,16 @@ describe('banco da caixa de entrada por nicho', () => {
     expect(new Set(ps.map((p) => p.name)).size).toBe(8)
     // a Mariana da intro é a última da lista em todos os nichos (a que pergunta o preço)
     expect(ps[ps.length - 1].name).toBe(INTRO.name)
+    // ...e mantém a mesma pergunta da intro em todos os nichos
+    expect(ps[ps.length - 1].msg).toBe(INTRO.msg)
     // "Antes de chamar, viu:" nunca fala de preço (regras de conselho profissional)
     expect(niche.seenBefore).toHaveLength(5)
     for (const s of niche.seenBefore) expect(s).not.toMatch(/R\$|preço|valor|custa/i)
+  })
+
+  it.each(['educacao', 'servicos', 'varejo', 'alimentacao', 'outro'] as const)('%s responde o preço que a Mariana perguntou', (k) => {
+    expect(INBOX_BANK[k].reply).toBe(priceReply(INBOX_BANK[k].ticketMedio))
+    expect(INBOX_BANK[k].reply).toMatch(/^Oi! Fica R\$ [\d.]+\.$/)
   })
 
   it.each(['odonto', 'estetica', 'clinica'] as const)('%s não responde com preço (conselho profissional)', (k) => {
