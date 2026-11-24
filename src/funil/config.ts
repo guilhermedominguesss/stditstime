@@ -372,6 +372,8 @@ export interface WhatsAppData {
   /** receita a mais por mês (projeção conservadora); null = variante honesta */
   receitaExtraMes: number | null
   refCode: string
+  /** WhatsApp do lead, já formatado "(41) 99999-9999" (entra na mensagem pronta) */
+  telefone?: string
 }
 
 /**
@@ -390,6 +392,7 @@ export function whatsappMessage(d: WhatsAppData, money: (n: number) => string): 
     `Leads/mês: ${d.leads >= LEADS_MAX ? '1.000+' : d.leads}`,
     `Conversão hoje: ${d.conv10}/10 · Ticket: ${d.ticketLabel}`,
     ganho,
+    ...(d.telefone ? [`Meu WhatsApp: ${d.telefone}`] : []),
     '',
     `Quero ver como seria um STD, um filtro antes do WhatsApp, pro meu negócio. [${d.refCode}]`,
   ].join('\n')

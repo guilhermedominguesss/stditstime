@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ENV } from '../funil/config'
-import { detectDevice, detectInAppBrowser, generateRefCode, isCrawler, readAttribution, uuid, type Attribution } from './session'
+import { detectDevice, detectInAppBrowser, generateRefCode, isCrawler, readAttribution, resolveTestDevice, uuid, type Attribution } from './session'
 
 /**
  * TRACKING (Supabase: funil_sessions / funil_events, no projeto do painel).
@@ -21,6 +21,7 @@ export type FvEvent =
   | 'fv_case_view' | 'fv_case_open_std' | 'fv_qualified' | 'fv_disqualified' | 'fv_whatsapp_click'
   | 'fv_checklist_check' | 'fv_back'
   | 'fv_error' | 'fv_first_paint' | 'fv_first_interaction' | 'fv_intro_view' | 'fv_intro_cta'
+  | 'fv_whatsapp_retorno' | 'fv_whatsapp_confirmado' | 'fv_whatsapp_nao_abriu'
 
 /** Colunas que o RPC aceita (o banco também valida). */
 export interface SessionPatch {
@@ -38,6 +39,8 @@ export interface SessionPatch {
   std_on_at?: string
   completed_at?: string
   intro_cta_at?: string
+  /** WhatsApp do lead qualificado: 11 dígitos (DDD + número) */
+  whatsapp?: string
 }
 
 export type Job =
@@ -97,7 +100,7 @@ class Tracker {
     const hasWindow = typeof window !== 'undefined'
     this.attribution = readAttribution(hasWindow ? window.location.search : '')
     this.disabled = hasWindow ? isCrawler(navigator.userAgent) : true
-    this.isTest = hasWindow ? new URLSearchParams(window.location.search).get('test') === '1' : false
+    this.isTest = hasWindow ? resolveTestDevice(window.location.search) : false
   }
 
   /**
@@ -218,6 +221,34 @@ class Tracker {
 
   patch(fields: SessionPatch) {
     this.push({ kind: 'patch', tries: 0, id: this.sessionId, fields })
+  }
+
+  /** Evento de OUTRA sessão desta aba (ex.: a pessoa voltou do WhatsApp e a página recarregou). */
+  eventFor(sid: string, name: FvEvent, payload: Record<string, unknown> = {}, scene = this.scene) {
+    this.push({ kind: 'event', tries: 0, sid, name, scene, payload })
+  }
+
+  /**
+   * Grava AGORA, com keepalive (sobrevive à troca de página para o WhatsApp). Também entra
+   * na fila, que reenvia se este envio falhar (o RPC é idempotente).
+   */
+  saveNow(fields: SessionPatch) {
+    this.patch(fields)
+    if (this.disabled || !ENV.supabaseUrl || !ENV.supabaseAnonKey) return
+    try {
+      void fetch(`${ENV.supabaseUrl}/rest/v1/rpc/fv_patch_session`, {
+        method: 'POST',
+        keepalive: true,
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: ENV.supabaseAnonKey,
+          Authorization: `Bearer ${ENV.supabaseAnonKey}`,
+        },
+        body: JSON.stringify({ p_id: this.sessionId, p_fields: fields }),
+      }).catch(() => undefined)
+    } catch {
+      /* a fila cobre */
+    }
   }
 
   /** Quantos registros ainda esperam o Supabase (teste/diagnóstico). */

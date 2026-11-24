@@ -34,7 +34,7 @@ export interface InboxResult {
 export type InboxEvent =
   | { type: 'start'; segment: SegmentId }
   | { type: 'scene'; scene: InboxScene }
-  | { type: 'input'; field: 'conv_10' | 'leads_mes' | 'ticket'; value: number | string }
+  | { type: 'input'; field: 'conv_10' | 'leads_mes' | 'ticket'; value: number | string; meta?: Record<string, unknown> }
   | { type: 'std_on' }
   | { type: 'result'; result: InboxResult }
   | { type: 'open_card' }
@@ -216,11 +216,12 @@ export function InboxFlow({ onEvent, onProof }: { onEvent?: (e: InboxEvent) => v
     if (phase === 'phrase') later(() => { setK(0); setPhase('cards') }, T.phraseHold)
   }, [phase, later])
 
-  const confirmVanish = () => {
+  /** só chega aqui com resposta explícita: ≥ 1 toque nas conversas OU "Nenhuma some" */
+  const confirmVanish = (none: boolean) => {
     vibrate(8)
     const a = 10 - vanish.length
     setA10(a)
-    emit.current?.({ type: 'input', field: 'conv_10', value: a })
+    emit.current?.({ type: 'input', field: 'conv_10', value: a, meta: { tocou: vanish.length, nenhuma: none } })
     setPhase('askQuick')
   }
 
@@ -614,8 +615,17 @@ function Sheet({ children }: { children: React.ReactNode }) {
 }
 
 /** "De cada 10, quantas somem assim?" — 10 conversas ANÔNIMAS (a caixa real, não a simulação). */
-function AskVanish({ selected, onToggle, onContinue }: { selected: number[]; onToggle: (i: number) => void; onContinue: () => void }) {
+function AskVanish({ selected, onToggle, onContinue }: { selected: number[]; onToggle: (i: number) => void; onContinue: (none: boolean) => void }) {
   const [gone, stay] = C.askVanishCount(selected.length)
+  // sem resposta não avança (antes, avançar sem tocar virava "10/10" e R$ 0 a mais)
+  const [none, setNone] = useState(false)
+  const [missing, setMissing] = useState(false)
+  const answered = selected.length > 0 || none
+  const toggle = (i: number) => { setNone(false); setMissing(false); onToggle(i) }
+  const go = () => {
+    if (!answered) { setMissing(true); vibrate(20); return }
+    onContinue(none)
+  }
   return (
     <Sheet>
       <h2 className="text-[22px] font-semibold leading-tight text-ink">{C.askVanish}</h2>
@@ -628,7 +638,7 @@ function AskVanish({ selected, onToggle, onContinue }: { selected: number[]; onT
               key={i}
               type="button"
               aria-pressed={on}
-              onClick={() => onToggle(i)}
+              onClick={() => toggle(i)}
               whileTap={{ scale: 0.96 }}
               className={`flex h-14 items-center gap-2.5 rounded-2xl border px-3 text-left transition-colors ${on ? 'border-leak/40 bg-leak/10' : 'border-line bg-bg-raised'}`}
             >
@@ -641,13 +651,40 @@ function AskVanish({ selected, onToggle, onContinue }: { selected: number[]; onT
           )
         })}
       </div>
-      <p className="mt-4 text-[15px] font-semibold" aria-live="polite">
-        <span className="text-leak">{gone}</span>
-        <span className="text-ink-muted"> · </span>
-        <span className="text-ink">{stay}</span>
+      <button
+        type="button"
+        aria-pressed={none}
+        onClick={() => {
+          // "Nenhuma some" é resposta explícita: limpa os toques
+          for (const i of selected) onToggle(i)
+          setNone((v) => !v)
+          setMissing(false)
+        }}
+        className={`mt-2 h-12 w-full rounded-2xl border text-[15px] font-semibold transition-colors ${none ? 'border-ink bg-ink/10 text-ink' : 'border-line text-ink-muted'}`}
+      >
+        {C.askVanishNone}
+      </button>
+      <p className="mt-3 text-[15px] font-semibold" aria-live="polite">
+        {answered ? (
+          <>
+            <span className="text-leak">{gone}</span>
+            <span className="text-ink-muted"> · </span>
+            <span className="text-ink">{stay}</span>
+          </>
+        ) : missing ? (
+          <span className="text-leak">{C.askVanishMissing}</span>
+        ) : (
+          <span className="text-ink-muted">&nbsp;</span>
+        )}
       </p>
       <div className="pb-safe mt-auto pb-4 pt-3">
-        <motion.button type="button" onClick={onContinue} whileTap={{ scale: 0.97 }} className="h-14 w-full rounded-2xl bg-ink text-[17px] font-semibold text-bg">
+        <motion.button
+          type="button"
+          onClick={go}
+          aria-disabled={!answered}
+          whileTap={answered ? { scale: 0.97 } : undefined}
+          className={`h-14 w-full rounded-2xl text-[17px] font-semibold transition-opacity ${answered ? 'bg-ink text-bg' : 'bg-ink/30 text-bg/70'}`}
+        >
           {C.askContinue}
         </motion.button>
       </div>
