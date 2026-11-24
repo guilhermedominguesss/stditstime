@@ -142,6 +142,8 @@ export const INBOX = {
   askVanishHint: 'Toque nas que somem.',
   askVanishCount: (n: number) => [`${n} somem`, `${10 - n} viram conversa`] as const,
   askVanishTag: 'sumiu',
+  askVanishNone: 'Nenhuma some',
+  askVanishMissing: 'Toque nas conversas que somem.',
   askContinue: 'Continuar',
   askLeads: 'Quantas pessoas te chamam por mês?',
   askTicket: 'Quanto vale um cliente pra você?',
@@ -209,8 +211,24 @@ export const SAIDA_QUALIFICADO = {
   },
   subtitle: 'É assim que você vai chegar no meu WhatsApp:',
   narrator: 'Você acabou de passar por um STD. É isso que seu cliente viveria.',
-  cta: 'Chamar no WhatsApp',
+  cta: 'Enviar e chamar no WhatsApp',
   micro: 'Quem te responde é o Guilherme, não um robô.',
+  phoneLabel: 'Seu WhatsApp',
+  phonePlaceholder: '(DD) 9XXXX-XXXX',
+  phoneNote: 'Usamos seu número só para falar sobre este resultado.',
+  phoneError: 'Informe seu WhatsApp com DDD.',
+  /** rede de segurança: a pessoa voltou para a página depois de abrir o WhatsApp */
+  back: {
+    title: 'A mensagem foi enviada?',
+    yes: 'Sim, enviei',
+    no: 'Não abriu',
+    help: 'Tentei abrir de novo. Se não abrir, chame neste número e cole a mensagem:',
+    copyNumber: 'Copiar número',
+    copyMessage: 'Copiar mensagem',
+    copied: 'Copiado',
+    reopen: 'Abrir o WhatsApp',
+    close: 'Fechar',
+  },
 } as const
 
 export const SAIDA_NAO_QUALIFICADO = {

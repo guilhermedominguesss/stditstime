@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { WHATSAPP_NUMBER_DEFAULT, whatsappMessage, whatsappNumber } from '../funil/config'
 import { fmt } from '../funil/math'
-import { REF_CODE_RE, detectDevice, detectInAppBrowser, generateRefCode, isCrawler, readAttribution } from './session'
+import { REF_CODE_RE, detectDevice, detectInAppBrowser, generateRefCode, isCrawler, normalizeUtm, readAttribution } from './session'
 
 describe('refCode', () => {
   it('tem o formato FV-XXXX sem caracteres ambíguos', () => {
@@ -67,6 +67,10 @@ describe('WhatsApp', () => {
     expect(m).not.toContain('Projeção')
     expect(m).toContain('acima da média')
   })
+  it('o WhatsApp do lead entra na mensagem pronta', () => {
+    expect(whatsappMessage({ ...base, receitaExtraMes: 1, telefone: '(41) 99999-9999' }, fmt)).toContain('Meu WhatsApp: (41) 99999-9999')
+    expect(whatsappMessage({ ...base, receitaExtraMes: 1 }, fmt)).not.toContain('Meu WhatsApp')
+  })
   it('1.000 leads aparece como 1.000+', () => {
     expect(whatsappMessage({ ...base, leads: 1000, receitaExtraMes: 1 }, fmt)).toContain('Leads/mês: 1.000+')
   })
@@ -79,5 +83,22 @@ describe('WhatsApp', () => {
     expect(whatsappNumber('(41) 99999-8888')).toBe('5541999998888')
     expect(whatsappNumber('5541999998888')).toBe('5541999998888')
     expect(whatsappNumber('')).toBe('')
+  })
+})
+
+describe('UTM codificada', () => {
+  it('decodifica o nome do anúncio que o Meta manda codificado (e com +)', () => {
+    expect(normalizeUtm('%5BAD2%5D%5BPARE+DE+PAGAR')).toBe('[AD2][PARE DE PAGAR')
+    expect(normalizeUtm('%255BAD2%255D+teste')).toBe('[AD2] teste')
+    expect(normalizeUtm('[AD2][PARE DE PAGAR]')).toBe('[AD2][PARE DE PAGAR]')
+  })
+  it('a mesma UTM codificada ou não vira a mesma string', () => {
+    const a = readAttribution('?utm_content=%255BAD2%255D%255BPARE%2BDE%2BPAGAR%255D').utm_content
+    const b = readAttribution('?utm_content=%5BAD2%5D%5BPARE+DE+PAGAR%5D').utm_content
+    expect(a).toBe('[AD2][PARE DE PAGAR]')
+    expect(b).toBe(a)
+  })
+  it('não quebra com % solto', () => {
+    expect(normalizeUtm('100%+off')).toBe('100% off')
   })
 })

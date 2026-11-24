@@ -10,7 +10,23 @@ import { InboxFlow, type InboxEvent, type InboxResult } from '../inbox/InboxFlow
 import { PhoneFrame } from '../inbox/parts'
 import { capiLead, initPixel, pixel } from '../tracking/pixel'
 import { tracker } from '../tracking/tracker'
-import { Prova, Qualificacao, SaidaNaoQualificado, SaidaQualificado, type GainLine } from './scenes'
+import { maskPhone } from '../funil/phone'
+import { Prova, Qualificacao, SaidaNaoQualificado, SaidaQualificado, WhatsAppBack, type GainLine } from './scenes'
+
+/** abriu o WhatsApp: guardado na aba para a rede de segurança (sobrevive a recarregar) */
+const WA_KEY = 'fv_wa_open'
+const WA_WINDOW_MS = 90_000
+interface WaOpen { at: number; sid: string; ref: string; href: string; message: string }
+
+function readWaOpen(): WaOpen | null {
+  try {
+    const raw = sessionStorage.getItem(WA_KEY)
+    const v = raw ? (JSON.parse(raw) as WaOpen) : null
+    return v && Date.now() - v.at <= WA_WINDOW_MS ? v : null
+  } catch {
+    return null
+  }
+}
 
 /**
  * O APP (rota /): Caixa de Entrada Viva (cenas 0–7) → Prova (8) → Qualificação (9)
@@ -18,7 +34,8 @@ import { Prova, Qualificacao, SaidaNaoQualificado, SaidaQualificado, type GainLi
  * As cenas 8–10 sobem por cima da caixa de entrada, que nunca é desmontada.
  *
  * Tracking: Supabase (fila resiliente) + Meta Pixel + CAPI.
- * Lead dispara SOMENTE no clique de WhatsApp de lead QUALIFICADO, com eventID = refCode.
+ * Lead dispara SOMENTE quando o lead QUALIFICADO envia o número (antes de abrir o WhatsApp),
+ * com eventID = refCode.
  * Não qualificado dispara só FV_NaoQualificado.
  */
 
@@ -29,6 +46,30 @@ export default function App() {
   const [result, setResult] = useState<InboxResult | null>(null)
   const [run, setRun] = useState(0)
   const stdOnSent = useRef(false)
+  /** rede de segurança: voltou do WhatsApp em até 90s */
+  const [waBack, setWaBack] = useState<(WaOpen & { via: string }) | null>(null)
+  const waShown = useRef(false)
+
+  useEffect(() => {
+    const check = (via: string) => {
+      if (waShown.current || document.visibilityState !== 'visible') return
+      const open = readWaOpen()
+      if (!open) return
+      waShown.current = true
+      setWaBack({ ...open, via })
+      tracker.eventFor(open.sid, 'fv_whatsapp_retorno', { via, segundos: Math.round((Date.now() - open.at) / 1000) }, 'saida_qualificado')
+    }
+    // a página foi recarregada ao voltar (o WhatsApp abriu na mesma aba)
+    check('recarregou')
+    const onVis = () => check('voltou')
+    const onShow = (e: PageTransitionEvent) => { if (e.persisted) check('voltou') }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('pageshow', onShow)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('pageshow', onShow)
+    }
+  }, [])
 
   // tracking e pixel depois da primeira pintura (nunca atrasam o texto da abertura)
   useEffect(() => {
@@ -65,10 +106,11 @@ export default function App() {
       case 'intro_cta':
         tracker.event('fv_intro_cta', { watched_ms: e.watchedMs, ...tracker.timing() })
         tracker.patch({ intro_cta_at: 'now' })
+        pixel('FV_IntroCTA')
         break
       case 'input': {
         const valor = e.field === 'ticket' ? TICKET_MIDPOINTS[e.value as TicketId] : e.value
-        tracker.event('fv_input', { campo: e.field, valor: e.value })
+        tracker.event('fv_input', { campo: e.field, valor: e.value, ...e.meta })
         tracker.patch({ [e.field]: valor })
         break
       }
@@ -132,7 +174,7 @@ export default function App() {
     if (!result) return null
     const { diag } = result
     const ticketLabel = INBOX.ticketChip[result.ticket]
-    const message = whatsappMessage(
+    const buildMessage = (telefone?: string) => whatsappMessage(
       {
         segmento: INBOX.segmentChip[result.segment],
         leads: result.leads,
@@ -140,24 +182,37 @@ export default function App() {
         ticketLabel,
         receitaExtraMes: diag.honest ? null : Math.round(diag.receitaExtra),
         refCode: tracker.refCode,
+        telefone,
       },
       fmt,
     )
     const gain: GainLine = diag.honest
       ? { label: SQ.sheet.ganho, value: SQ.sheet.honest }
       : { label: SQ.sheet.ganho, value: `+ R$ ${fmt(diag.receitaExtra)}/mês` }
-    const href = `https://wa.me/${whatsappNumber(ENV.whatsappNumber)}?text=${encodeURIComponent(message)}`
-    return { message, gain, href }
+    const hrefFor = (message: string) => `https://wa.me/${whatsappNumber(ENV.whatsappNumber)}?text=${encodeURIComponent(message)}`
+    return { buildMessage, gain, hrefFor }
   }, [result])
 
-  /** O único lugar que dispara Lead: clique de WhatsApp de lead QUALIFICADO. */
-  const onWhatsApp = () => {
-    if (!result) return
+  /**
+   * O único lugar que dispara Lead: o lead QUALIFICADO enviou o número.
+   * Ordem: grava o número (keepalive + fila) → Lead (pixel + CAPI, eventID = refCode) →
+   * só então abre o WhatsApp.
+   */
+  const onWhatsApp = (digits: string) => {
+    if (!result || !exit) return
     const value = result.diag.honest ? 0 : Math.round(result.diag.receitaExtra)
-    tracker.event('fv_whatsapp_click', { ref_code: tracker.refCode })
-    tracker.patch({ outcome: 'whatsapp', completed_at: 'now' })
+    const message = exit.buildMessage(maskPhone(digits))
+    const href = exit.hrefFor(message)
+    tracker.saveNow({ whatsapp: digits, qualificado: true, outcome: 'whatsapp', completed_at: 'now' })
+    tracker.event('fv_whatsapp_click', { ref_code: tracker.refCode, com_numero: true })
     pixel('Lead', { content_name: 'Funil Vivo', value, currency: 'BRL' }, tracker.refCode)
     capiLead(tracker.refCode, { segmento: result.segment, value })
+    try {
+      sessionStorage.setItem(WA_KEY, JSON.stringify({ at: Date.now(), sid: tracker.sessionId, ref: tracker.refCode, href, message } satisfies WaOpen))
+    } catch { /* sem sessionStorage: a volta pela visibilidade ainda funciona na mesma página */ }
+    waShown.current = false
+    // um respiro para o pixel sair antes de a página trocar
+    window.setTimeout(() => { window.location.href = href }, 250)
   }
 
   const restart = () => {
@@ -185,13 +240,35 @@ export default function App() {
         </AnimatePresence>
         <AnimatePresence>
           {scene === 'saida_qualificado' && exit && (
-            <SaidaQualificado key="sq" gain={exit.gain} message={exit.message} href={exit.href} onWhatsApp={onWhatsApp} />
+            <SaidaQualificado key="sq" gain={exit.gain} buildMessage={exit.buildMessage} onSubmit={onWhatsApp} />
           )}
           {scene === 'saida_nao_qualificado' && (
             <SaidaNaoQualificado
               key="snq"
               onCheck={(i, checked) => tracker.event('fv_checklist_check', { item: i + 1, marcado: checked })}
               onRestart={restart}
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {waBack && (
+            <WhatsAppBack
+              key="waback"
+              href={waBack.href}
+              message={waBack.message}
+              onYes={() => {
+                tracker.eventFor(waBack.sid, 'fv_whatsapp_confirmado', {}, 'saida_qualificado')
+                try { sessionStorage.removeItem(WA_KEY) } catch { /* ok */ }
+                setWaBack(null)
+              }}
+              onNo={() => {
+                tracker.eventFor(waBack.sid, 'fv_whatsapp_nao_abriu', {}, 'saida_qualificado')
+                window.open(waBack.href, '_blank', 'noopener')
+              }}
+              onClose={() => {
+                try { sessionStorage.removeItem(WA_KEY) } catch { /* ok */ }
+                setWaBack(null)
+              }}
             />
           )}
         </AnimatePresence>

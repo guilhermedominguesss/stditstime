@@ -3,7 +3,8 @@ import { ENV } from '../funil/config'
 /**
  * Meta Pixel. Regras do projeto:
  *  - PageView no load; ViewContent no fv_start.
- *  - Customizados: FV_Diagnostico, FV_StdOn, FV_Caso, FV_NaoQualificado.
+ *  - Customizados: FV_IntroCTA (toque na intro), FV_Diagnostico (viu o resultado), FV_StdOn,
+ *    FV_Caso, FV_NaoQualificado. Base das conversões personalizadas no Gerenciador.
  *  - Lead SOMENTE no clique de WhatsApp de lead QUALIFICADO, com eventID = refCode
  *    (o mesmo event_id vai para a API de Conversões, para a Meta deduplicar).
  * Pixel bloqueado ou sem ID: tudo vira no-op, nada quebra.
@@ -49,7 +50,7 @@ export function initPixel() {
 }
 
 export type StandardEvent = 'ViewContent' | 'Lead'
-export type CustomEvent = 'FV_Diagnostico' | 'FV_StdOn' | 'FV_Caso' | 'FV_NaoQualificado'
+export type CustomEvent = 'FV_IntroCTA' | 'FV_Diagnostico' | 'FV_StdOn' | 'FV_Caso' | 'FV_NaoQualificado'
 
 export function pixel(event: StandardEvent | CustomEvent, params: Record<string, unknown> = {}, eventId?: string) {
   try {

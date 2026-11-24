@@ -7,6 +7,7 @@ import {
 } from '../funil/config'
 import { CHECKLIST_VAZAMENTOS, PROVA, QUALIFICACAO, SAIDA_NAO_QUALIFICADO, SAIDA_QUALIFICADO } from '../funil/copy'
 
+import { displayOwnerNumber, isValidPhone, maskPhone, phoneDigits } from '../funil/phone'
 import { EASE_OUT_EXPO } from '../funil/tokens'
 import { CountUp, vibrate } from '../inbox/parts'
 
@@ -285,17 +286,59 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 /** Linha de destaque da saída: "A MAIS (PROJEÇÃO)" + valor (ou a variante honesta). */
 export interface GainLine { label: string; value: string }
 
-export function SaidaQualificado({ gain, message, href, onWhatsApp }: {
-  gain: GainLine; message: string; href: string; onWhatsApp: () => void
+export function SaidaQualificado({ gain, buildMessage, onSubmit }: {
+  gain: GainLine
+  /** mensagem pronta do WhatsApp (com o número da pessoa, quando válido) */
+  buildMessage: (telefone?: string) => string
+  /** número válido (11 dígitos): grava, dispara o Lead e só então abre o WhatsApp */
+  onSubmit: (digits: string) => void
 }) {
+  const [digits, setDigits] = useState('')
+  const [error, setError] = useState(false)
+  const [sent, setSent] = useState(false)
+  const valid = isValidPhone(digits)
+  const submit = () => {
+    if (!valid) { setError(true); vibrate(20); return }
+    if (sent) return
+    setSent(true)
+    vibrate(12)
+    onSubmit(digits)
+    window.setTimeout(() => setSent(false), 2500) // evita toque duplo, mas deixa tentar de novo
+  }
+  const message = buildMessage(valid ? maskPhone(digits) : undefined)
   return (
     <Screen
       z={50}
       footer={
-        <>
-          <Primary href={href} onClick={onWhatsApp} icon={<MessageCircle className="h-5 w-5" aria-hidden="true" />}>{SAIDA_QUALIFICADO.cta}</Primary>
-          <p className="mt-3 text-center text-[12px] font-medium leading-tight text-ink-muted">{SAIDA_QUALIFICADO.micro}</p>
-        </>
+        <form onSubmit={(e) => { e.preventDefault(); submit() }} noValidate>
+          <label htmlFor="fv-whatsapp" className="block text-[15px] font-semibold text-ink">{SAIDA_QUALIFICADO.phoneLabel}</label>
+          <input
+            id="fv-whatsapp"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
+            enterKeyHint="send"
+            placeholder={SAIDA_QUALIFICADO.phonePlaceholder}
+            value={maskPhone(digits)}
+            onChange={(e) => { setDigits(phoneDigits(e.target.value)); setError(false) }}
+            aria-invalid={error}
+            aria-describedby="fv-whatsapp-note"
+            className={`mt-1.5 h-[52px] w-full rounded-2xl border bg-bg-raised px-4 font-mono text-[18px] tabular text-ink outline-none placeholder:text-ink-muted/60 focus:border-ink ${error ? 'border-leak' : 'border-line'}`}
+          />
+          <p id="fv-whatsapp-note" className={`mt-1.5 text-[12px] leading-tight ${error ? 'font-semibold text-leak' : 'text-ink-muted'}`} aria-live="polite">
+            {error ? SAIDA_QUALIFICADO.phoneError : SAIDA_QUALIFICADO.phoneNote}
+          </p>
+          <motion.button
+            type="submit"
+            aria-disabled={!valid}
+            whileTap={valid ? { scale: 0.97 } : undefined}
+            className={`mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[17px] font-semibold text-bg transition-opacity ${valid ? 'bg-signal' : 'bg-signal/35'}`}
+          >
+            <MessageCircle className="h-5 w-5" aria-hidden="true" />
+            {SAIDA_QUALIFICADO.cta}
+          </motion.button>
+          <p className="mt-2.5 text-center text-[12px] font-medium leading-tight text-ink-muted">{SAIDA_QUALIFICADO.micro}</p>
+        </form>
       }
     >
       <h2 className="text-[30px] font-semibold leading-[1.08] tracking-[-0.01em] text-ink">{SAIDA_QUALIFICADO.title}</h2>
@@ -309,6 +352,100 @@ export function SaidaQualificado({ gain, message, href, onWhatsApp }: {
       </div>
       <p className="mt-6 font-serif text-[30px] italic leading-[1.1] text-ink">{SAIDA_QUALIFICADO.narrator}</p>
     </Screen>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Rede de segurança: voltou do WhatsApp em até 90s                    */
+/* ------------------------------------------------------------------ */
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      const ok = document.execCommand('copy')
+      ta.remove()
+      return ok
+    } catch {
+      return false
+    }
+  }
+}
+
+export function WhatsAppBack({ href, message, onYes, onNo, onClose }: {
+  href: string; message: string; onYes: () => void; onNo: () => void; onClose: () => void
+}) {
+  const B = SAIDA_QUALIFICADO.back
+  const [help, setHelp] = useState(false)
+  const [copied, setCopied] = useState<'num' | 'msg' | null>(null)
+  const owner = displayOwnerNumber(ENV.whatsappNumber)
+  const copy = async (what: 'num' | 'msg') => {
+    if (await copyText(what === 'num' ? owner.replace(/\D/g, '') : message)) {
+      setCopied(what)
+      window.setTimeout(() => setCopied(null), 1800)
+    }
+  }
+  return (
+    <motion.div
+      className="absolute inset-0 z-[80] flex items-end bg-black/70"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1, transition: { duration: 0.2 } }}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="fv-back-title"
+    >
+      <motion.div
+        className="w-full rounded-t-3xl border-t border-line bg-[#0E1013] px-5 pt-5"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}
+        initial={{ y: 40 }}
+        animate={{ y: 0, transition: { duration: 0.35, ease: EASE_OUT_EXPO } }}
+      >
+        <h2 id="fv-back-title" className="text-[24px] font-semibold leading-tight text-ink">{B.title}</h2>
+        {!help ? (
+          <div className="mt-5 grid grid-cols-2 gap-2.5">
+            <button type="button" onClick={onYes} className="h-14 rounded-2xl bg-signal text-[16px] font-semibold text-bg">{B.yes}</button>
+            <button
+              type="button"
+              onClick={() => { setHelp(true); onNo() }}
+              className="h-14 rounded-2xl border border-line text-[16px] font-semibold text-ink"
+            >
+              {B.no}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <p className="text-[15px] leading-snug text-ink">{B.help}</p>
+            <div className="mt-3 flex items-center gap-2 rounded-2xl border border-line bg-bg-raised px-4 py-3">
+              <span className="flex-1 font-mono text-[20px] tabular text-ink">{owner}</span>
+              <button type="button" onClick={() => void copy('num')} className="h-10 rounded-xl border border-line px-3 text-[14px] font-semibold text-ink">
+                {copied === 'num' ? B.copied : B.copyNumber}
+              </button>
+            </div>
+            <div className="mt-2 rounded-2xl border border-line bg-bg-raised px-4 py-3">
+              <p className="max-h-28 overflow-y-auto whitespace-pre-line text-[13px] leading-snug text-ink">{message}</p>
+              <button type="button" onClick={() => void copy('msg')} className="mt-2 h-10 w-full rounded-xl border border-line text-[14px] font-semibold text-ink">
+                {copied === 'msg' ? B.copied : B.copyMessage}
+              </button>
+            </div>
+            <a href={href} target="_blank" rel="noopener" className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-signal text-[16px] font-semibold text-bg">
+              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+              {B.reopen}
+            </a>
+            <button type="button" onClick={onClose} className="mt-2 h-11 w-full text-[15px] text-ink-muted">{B.close}</button>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
   )
 }
 
